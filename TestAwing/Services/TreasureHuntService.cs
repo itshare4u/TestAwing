@@ -1,18 +1,11 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using TreasureHunt.Models;
+using TestAwing.Models;
 
-namespace TreasureHunt.Services;
+namespace TestAwing.Services;
 
-public class TreasureHuntService
+public class TreasureHuntService(TreasureHuntContext context)
 {
-    private readonly TreasureHuntContext _context;
-
-    public TreasureHuntService(TreasureHuntContext context)
-    {
-        _context = context;
-    }
-
     public async Task<TreasureHuntResponse> SolveTreasureHunt(TreasureHuntRequest request)
     {
         // Validate matrix dimensions
@@ -39,8 +32,8 @@ public class TreasureHuntService
             CreatedAt = DateTime.UtcNow
         };
 
-        _context.TreasureHuntResults.Add(result);
-        await _context.SaveChangesAsync();
+        context.TreasureHuntResults.Add(result);
+        await context.SaveChangesAsync();
 
         return new TreasureHuntResponse
         {
@@ -51,7 +44,7 @@ public class TreasureHuntService
 
     public async Task<List<TreasureHuntResult>> GetAllTreasureHunts()
     {
-        return await _context.TreasureHuntResults
+        return await context.TreasureHuntResults
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync();
     }
@@ -66,45 +59,41 @@ public class TreasureHuntService
         // Group positions by chest number
         var chestPositions = new Dictionary<int, List<(int row, int col)>>();
         
-        for (int i = 0; i < n; i++)
+        for (var i = 0; i < n; i++)
         {
-            for (int j = 0; j < m; j++)
+            for (var j = 0; j < m; j++)
             {
                 var chestNum = matrix[i][j];
                 if (!chestPositions.ContainsKey(chestNum))
-                    chestPositions[chestNum] = new List<(int, int)>();
+                    chestPositions[chestNum] = [];
                 chestPositions[chestNum].Add((i, j));
             }
         }
 
         double totalFuel = 0;
-        int currentRow = 0; // Starting at (1,1) which is (0,0) in 0-indexed
-        int currentCol = 0;
+        var currentRow = 0; // Starting at (1,1) which is (0,0) in 0-indexed
+        var currentCol = 0;
 
         // Visit chests from 1 to p in order, finding optimal path within each group
-        for (int chest = 1; chest <= p; chest++)
+        for (var chest = 1; chest <= p; chest++)
         {
-            if (!chestPositions.ContainsKey(chest))
+            if (!chestPositions.TryGetValue(chest, out var positions))
                 throw new ArgumentException($"Chest {chest} not found in matrix");
 
-            var positions = chestPositions[chest];
-            
             // Find the closest chest of this number
-            double minDistance = double.MaxValue;
-            (int bestRow, int bestCol) = (0, 0);
+            var minDistance = double.MaxValue;
+            var (bestRow, bestCol) = (0, 0);
             
             foreach (var (targetRow, targetCol) in positions)
             {
                 var deltaX = targetRow - currentRow;
                 var deltaY = targetCol - currentCol;
                 var distance = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
-                
-                if (distance < minDistance)
-                {
-                    minDistance = distance;
-                    bestRow = targetRow;
-                    bestCol = targetCol;
-                }
+
+                if (!(distance < minDistance)) continue;
+                minDistance = distance;
+                bestRow = targetRow;
+                bestCol = targetCol;
             }
             
             totalFuel += minDistance;

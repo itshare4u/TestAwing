@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace TreasureHunt.Models;
+namespace TestAwing.Models;
 
-public class TreasureHuntRequest
+public abstract class TreasureHuntRequest
 {
     [Required]
     [Range(1, 500)]
@@ -17,7 +17,7 @@ public class TreasureHuntRequest
     public int P { get; set; }
     
     [Required]
-    public int[][] Matrix { get; set; } = Array.Empty<int[]>();
+    public int[][] Matrix { get; set; } = [];
 }
 
 public class TreasureHuntResult

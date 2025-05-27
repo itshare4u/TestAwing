@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using TreasureHunt.Models;
-using TreasureHunt.Services;
+using TestAwing.Models;
+using TestAwing.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 

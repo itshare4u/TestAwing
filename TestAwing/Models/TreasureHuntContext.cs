@@ -1,13 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace TreasureHunt.Models;
+namespace TestAwing.Models;
 
-public class TreasureHuntContext : DbContext
+public class TreasureHuntContext(DbContextOptions<TreasureHuntContext> options) : DbContext(options)
 {
-    public TreasureHuntContext(DbContextOptions<TreasureHuntContext> options)
-        : base(options)
-    {
-    }
-
     public DbSet<TreasureHuntResult> TreasureHuntResults { get; set; }
 }
