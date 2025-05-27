@@ -17,7 +17,7 @@ public abstract class TreasureHuntRequest
     public int P { get; set; }
     
     [Required]
-    public int[][] Matrix { get; set; } = [];
+    public int[][] Matrix { get; set; } = Array.Empty<int[]>();
 }
 
 public class TreasureHuntResult

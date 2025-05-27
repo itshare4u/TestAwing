@@ -6,8 +6,21 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddOpenApi();
-builder.Services.AddDbContext<TreasureHuntContext>(options =>
-    options.UseInMemoryDatabase("TreasureHuntDb"));
+
+// Use SQLite for persistent storage or InMemory for temporary storage
+var usePersistentDb = builder.Configuration.GetValue<bool>("UsePersistentDatabase", false);
+
+if (usePersistentDb)
+{
+    builder.Services.AddDbContext<TreasureHuntContext>(options =>
+        options.UseSqlite("Data Source=treasurehunt.db"));
+}
+else
+{
+    builder.Services.AddDbContext<TreasureHuntContext>(options =>
+        options.UseInMemoryDatabase("TreasureHuntDb"));
+}
+
 builder.Services.AddScoped<TreasureHuntService>();
 builder.Services.AddCors(options =>
 {
@@ -18,6 +31,16 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Create database if using SQLite
+if (usePersistentDb)
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<TreasureHuntContext>();
+        context.Database.EnsureCreated();
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
