@@ -1,0 +1,7 @@
+﻿services:
+  testawing:
+    image: testawing
+    build:
+      context: .
+      dockerfile: TestAwing/Dockerfile
+

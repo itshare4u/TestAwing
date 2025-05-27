@@ -1,0 +1,15 @@
+{
+  "name": "treasure-hunt-app",
+  "version": "1.0.0",
+  "description": "Treasure Hunt Solver - C# backend with React frontend",
+  "scripts": {
+    "dev": "concurrently \"dotnet run --project TestAwing\" \"cd frontend && npm start\"",
+    "backend": "dotnet run --project TestAwing",
+    "frontend": "cd frontend && npm start",
+    "build": "cd frontend && npm run build",
+    "restore": "dotnet restore && cd frontend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

@@ -1,0 +1,33 @@
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestAwing", "TestAwing\TestAwing.csproj", "{17746693-F703-48FB-9109-D2E8A28A8313}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C2DF916E-DD20-4734-9A37-73FEE669C7F2}"
+	ProjectSection(SolutionItems) = preProject
+		compose.yaml = compose.yaml
+		package.json = package.json
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Frontend", "Frontend", "{B8F4E7C3-2D1A-4E8F-9B5C-6A3E7D9F4C2B}"
+	ProjectSection(SolutionItems) = preProject
+		frontend\package.json = frontend\package.json
+		frontend\tsconfig.json = frontend\tsconfig.json
+		frontend\public\index.html = frontend\public\index.html
+		frontend\src\App.tsx = frontend\src\App.tsx
+		frontend\src\index.tsx = frontend\src\index.tsx
+		frontend\src\App.css = frontend\src\App.css
+		frontend\src\index.css = frontend\src\index.css
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{17746693-F703-48FB-9109-D2E8A28A8313}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{17746693-F703-48FB-9109-D2E8A28A8313}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{17746693-F703-48FB-9109-D2E8A28A8313}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{17746693-F703-48FB-9109-D2E8A28A8313}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
