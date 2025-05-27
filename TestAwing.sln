@@ -17,6 +17,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Frontend", "Frontend", "{B8
 		frontend\src\index.tsx = frontend\src\index.tsx
 		frontend\src\App.css = frontend\src\App.css
 		frontend\src\index.css = frontend\src\index.css
+		frontend\README.md = frontend\README.md
+		frontend\.gitignore = frontend\.gitignore
 	EndProjectSection
 EndProject
 Global

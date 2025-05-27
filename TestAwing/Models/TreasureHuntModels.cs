@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace TestAwing.Models;
 
-public abstract class TreasureHuntRequest
+public class TreasureHuntRequest
 {
     [Required]
     [Range(1, 500)]

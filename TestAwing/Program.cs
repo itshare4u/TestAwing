@@ -7,18 +7,35 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddOpenApi();
 
-// Use SQLite for persistent storage or InMemory for temporary storage
-var usePersistentDb = builder.Configuration.GetValue<bool>("UsePersistentDatabase", false);
+// Configure database based on settings
+var databaseProvider = builder.Configuration.GetValue<string>("DatabaseProvider", "InMemory");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-if (usePersistentDb)
+switch (databaseProvider.ToLower())
 {
-    builder.Services.AddDbContext<TreasureHuntContext>(options =>
-        options.UseSqlite("Data Source=treasurehunt.db"));
-}
-else
-{
-    builder.Services.AddDbContext<TreasureHuntContext>(options =>
-        options.UseInMemoryDatabase("TreasureHuntDb"));
+    case "sqlite":
+        builder.Services.AddDbContext<TreasureHuntContext>(options =>
+            options.UseSqlite(connectionString ?? "Data Source=treasurehunt.db"));
+        break;
+        
+    case "sqlserver":
+        builder.Services.AddDbContext<TreasureHuntContext>(options =>
+            options.UseSqlServer(connectionString ?? 
+                "Server=(localdb)\\mssqllocaldb;Database=TreasureHuntDb;Trusted_Connection=true;"));
+        break;
+        
+    case "mysql":
+        var version = new MySqlServerVersion(new Version(8, 0, 29));
+        builder.Services.AddDbContext<TreasureHuntContext>(options =>
+            options.UseMySql(connectionString ?? 
+                "Server=localhost;Database=TreasureHuntDb;Uid=root;Pwd=;", version));
+        break;
+        
+    case "inmemory":
+    default:
+        builder.Services.AddDbContext<TreasureHuntContext>(options =>
+            options.UseInMemoryDatabase("TreasureHuntDb"));
+        break;
 }
 
 builder.Services.AddScoped<TreasureHuntService>();
@@ -32,13 +49,31 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Create database if using SQLite
-if (usePersistentDb)
+// Create database if not using InMemory
+if (databaseProvider.ToLower() != "inmemory")
 {
     using (var scope = app.Services.CreateScope())
     {
         var context = scope.ServiceProvider.GetRequiredService<TreasureHuntContext>();
-        context.Database.EnsureCreated();
+        
+        try
+        {
+            // For SQL Server and MySQL, use migrations if available, otherwise create database
+            if (databaseProvider.ToLower() == "sqlserver" || databaseProvider.ToLower() == "mysql")
+            {
+                context.Database.Migrate();
+            }
+            else
+            {
+                context.Database.EnsureCreated();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error and fall back to EnsureCreated
+            Console.WriteLine($"Migration failed: {ex.Message}. Falling back to EnsureCreated.");
+            context.Database.EnsureCreated();
+        }
     }
 }
 
