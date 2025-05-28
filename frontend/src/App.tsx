@@ -574,14 +574,15 @@ const App: React.FC = () => {
                                         <Table size="small" stickyHeader>
                                             <TableHead>
                                                 <TableRow>
+                                                    <TableCell sx={{ backgroundColor: '#f5f5f5', fontWeight: 'bold', width: '50px' }}>#</TableCell>
                                                     <TableCell sx={{ backgroundColor: '#f5f5f5', fontWeight: 'bold' }}>N×M</TableCell>
                                                     <TableCell sx={{ backgroundColor: '#f5f5f5', fontWeight: 'bold' }}>P</TableCell>
                                                     <TableCell sx={{ backgroundColor: '#f5f5f5', fontWeight: 'bold' }}>Min Fuel</TableCell>
-                                                    <TableCell sx={{ backgroundColor: '#f5f5f5', fontWeight: 'bold' }}>Date</TableCell>
+                                                    <TableCell sx={{ backgroundColor: '#f5f5f5', fontWeight: 'bold' }}>Date & Time</TableCell>
                                                 </TableRow>
                                             </TableHead>
                                             <TableBody>
-                                                {history.map((item) => (
+                                                {history.map((item, index) => (
                                                 <TableRow 
                                                     key={item.id} 
                                                     onClick={() => handleHistoryItemClick(item)} 
@@ -591,11 +592,12 @@ const App: React.FC = () => {
                                                         backgroundColor: selectedHistoryItem?.id === item.id ? '#e3f2fd' : 'inherit'
                                                     }}
                                                 >
+                                                    <TableCell>{(historyPage - 1) * itemsPerPage + index + 1}</TableCell>
                                                     <TableCell>{item.n}×{item.m}</TableCell>
                                                     <TableCell>{item.p}</TableCell>
                                                     <TableCell>{item.minFuel.toFixed(5)}</TableCell>
                                                     <TableCell>
-                                                        {new Date(item.createdAt).toLocaleDateString()}
+                                                        {new Date(item.createdAt).toLocaleDateString()} {new Date(item.createdAt).toLocaleTimeString()}
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
@@ -628,17 +630,6 @@ const App: React.FC = () => {
                     <Typography variant="h6" gutterBottom>
                         Solution Path
                     </Typography>
-
-                    {selectedHistoryItem && (
-                        <Button
-                            variant="outlined"
-                            onClick={() => setSelectedHistoryItem(null)}
-                            sx={{mb: 2}}
-                            size="small"
-                        >
-                            View Current Solution
-                        </Button>
-                    )}
 
                     <TableContainer component={Paper} variant="outlined">
                         <Table size="small">
