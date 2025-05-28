@@ -60,6 +60,29 @@ public class TreasureHuntService
             .ToListAsync();
     }
 
+    public async Task<PaginatedResponse<TreasureHuntResult>> GetPaginatedTreasureHunts(int page = 1, int pageSize = 8)
+    {
+        // Validate pagination parameters
+        page = Math.Max(1, page);
+        pageSize = Math.Max(1, Math.Min(100, pageSize)); // Limit max page size to 100
+
+        var totalCount = await _context.TreasureHuntResults.CountAsync();
+        
+        var data = await _context.TreasureHuntResults
+            .OrderByDescending(x => x.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new PaginatedResponse<TreasureHuntResult>
+        {
+            Data = data,
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = totalCount
+        };
+    }
+
     public TreasureHuntRequest GenerateRandomTestData(int n, int m, int p)
     {
         // Validate basic constraints

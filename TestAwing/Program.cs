@@ -104,9 +104,12 @@ app.MapPost("/api/treasure-hunt", async (TreasureHuntRequest request, TreasureHu
     }
 });
 
-app.MapGet("/api/treasure-hunts", async (TreasureHuntService service) =>
+app.MapGet("/api/treasure-hunts", async (int? page, int? pageSize, TreasureHuntService service) =>
 {
-    var results = await service.GetAllTreasureHunts();
+    var pageNum = page ?? 1;
+    var pageSizeNum = pageSize ?? 8;
+    
+    var results = await service.GetPaginatedTreasureHunts(pageNum, pageSizeNum);
     return Results.Ok(results);
 });
 

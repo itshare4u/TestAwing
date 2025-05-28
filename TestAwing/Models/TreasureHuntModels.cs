@@ -59,3 +59,23 @@ public class TreasureHuntResultWithPath
     public double MinFuel { get; set; }
     public DateTime CreatedAt { get; set; }
 }
+
+public class PaginationRequest
+{
+    [Range(1, int.MaxValue)]
+    public int Page { get; set; } = 1;
+    
+    [Range(1, 100)]
+    public int PageSize { get; set; } = 8;
+}
+
+public class PaginatedResponse<T>
+{
+    public List<T> Data { get; set; } = new List<T>();
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalCount { get; set; }
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+    public bool HasNextPage => Page < TotalPages;
+    public bool HasPreviousPage => Page > 1;
+}
