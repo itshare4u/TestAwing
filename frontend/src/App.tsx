@@ -33,6 +33,14 @@ interface TreasureHuntRequest {
     matrix: number[][];
 }
 
+interface PathStep {
+    chestNumber: number;
+    row: number;
+    col: number;
+    fuelUsed: number;
+    cumulativeFuel: number;
+}
+
 interface TreasureHuntResult {
     id: number;
     n: number;
@@ -43,12 +51,25 @@ interface TreasureHuntResult {
     createdAt: string;
 }
 
+interface TreasureHuntResultWithPath {
+    id: number;
+    n: number;
+    m: number;
+    p: number;
+    matrix: number[][];
+    path: PathStep[];
+    minFuel: number;
+    createdAt: string;
+}
+
 const App: React.FC = () => {
     const [n, setN] = useState<number>(3);
     const [m, setM] = useState<number>(3);
     const [p, setP] = useState<number>(3);
     const [matrix, setMatrix] = useState<string[][]>([]);
     const [result, setResult] = useState<number | null>(null);
+    const [currentPath, setCurrentPath] = useState<PathStep[]>([]);
+    const [selectedHistoryItem, setSelectedHistoryItem] = useState<TreasureHuntResultWithPath | null>(null);
     const [error, setError] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
     const [history, setHistory] = useState<TreasureHuntResult[]>([]);
@@ -123,6 +144,8 @@ const App: React.FC = () => {
 
             const response = await axios.post('http://localhost:5001/api/treasure-hunt', request);
             setResult(response.data.minFuel);
+            setCurrentPath(response.data.path || []);
+            setSelectedHistoryItem(null); // Clear any selected history item
             fetchHistory(); // Refresh history
         } catch (err: any) {
             setError(err.response?.data?.message || 'An error occurred while solving the treasure hunt');
@@ -205,6 +228,62 @@ const App: React.FC = () => {
             setError(err.response?.data?.message || 'Failed to generate random data');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleHistoryItemClick = async (item: TreasureHuntResult) => {
+        try {
+            const response = await axios.get(`http://localhost:5001/api/treasure-hunt/${item.id}`);
+            const resultWithPath: TreasureHuntResultWithPath = response.data;
+            
+            // Set the form values to match the selected item
+            setN(resultWithPath.n);
+            setM(resultWithPath.m);
+            setP(resultWithPath.p);
+            
+            // Convert matrix to string format for display
+            setTimeout(() => {
+                const stringMatrix = resultWithPath.matrix.map(row => 
+                    row.map(cell => cell.toString())
+                );
+                setMatrix(stringMatrix);
+            }, 100);
+            
+            // Set the path and result
+            setCurrentPath(resultWithPath.path);
+            setResult(resultWithPath.minFuel);
+            setSelectedHistoryItem(resultWithPath);
+            setError('');
+        } catch (err: any) {
+            setError('Failed to load treasure hunt details');
+        }
+    };
+
+    const getPathStepAtPosition = (row: number, col: number): PathStep | null => {
+        const pathToUse = selectedHistoryItem ? selectedHistoryItem.path : currentPath;
+        return pathToUse.find(step => step.row === row && step.col === col) || null;
+    };
+
+    const getCellStyle = (row: number, col: number) => {
+        const step = getPathStepAtPosition(row, col);
+        if (!step) return {};
+        
+        if (step.chestNumber === 0) {
+            // Starting position
+            return {
+                backgroundColor: '#4caf50',
+                color: 'white',
+                fontWeight: 'bold'
+            };
+        } else {
+            // Path position - use gradient from light blue to dark blue based on step order
+            const intensity = Math.min(step.chestNumber / (p || 1), 1);
+            const alpha = 0.3 + (intensity * 0.5);
+            return {
+                backgroundColor: `rgba(33, 150, 243, ${alpha})`,
+                color: intensity > 0.5 ? 'white' : 'black',
+                fontWeight: 'bold'
+            };
         }
     };
 
@@ -295,18 +374,48 @@ const App: React.FC = () => {
                                 <TableBody>
                                     {Array.from({length: n}, (_, i) => (
                                         <TableRow key={i}>
-                                            {Array.from({length: m}, (_, j) => (
-                                                <TableCell key={j} sx={{p: 0.5}}>
-                                                    <TextField
-                                                        size="small"
-                                                        type="number"
-                                                        value={matrix[i]?.[j] || ''}
-                                                        onChange={(e) => handleMatrixChange(i, j, e.target.value)}
-                                                        inputProps={{min: 1, max: p, style: {textAlign: 'center'}}}
-                                                        sx={{width: '60px'}}
-                                                    />
-                                                </TableCell>
-                                            ))}
+                                            {Array.from({length: m}, (_, j) => {
+                                                const cellStyle = getCellStyle(i, j);
+                                                const pathStep = getPathStepAtPosition(i, j);
+                                                return (
+                                                    <TableCell 
+                                                        key={j} 
+                                                        sx={{
+                                                            p: 0.5,
+                                                            ...cellStyle
+                                                        }}
+                                                    >
+                                                        <TextField
+                                                            size="small"
+                                                            type="number"
+                                                            value={matrix[i]?.[j] || ''}
+                                                            onChange={(e) => handleMatrixChange(i, j, e.target.value)}
+                                                            inputProps={{min: 1, max: p, style: {textAlign: 'center'}}}
+                                                            sx={{
+                                                                width: '60px',
+                                                                '& .MuiInputBase-input': {
+                                                                    color: cellStyle.color || 'inherit',
+                                                                    fontWeight: cellStyle.fontWeight || 'normal'
+                                                                }
+                                                            }}
+                                                        />
+                                                        {pathStep && (
+                                                            <Typography 
+                                                                variant="caption" 
+                                                                sx={{
+                                                                    display: 'block',
+                                                                    fontSize: '10px',
+                                                                    lineHeight: 1,
+                                                                    mt: 0.5,
+                                                                    color: cellStyle.color || 'inherit'
+                                                                }}
+                                                            >
+                                                                Step {pathStep.chestNumber === 0 ? 'Start' : pathStep.chestNumber}
+                                                            </Typography>
+                                                        )}
+                                                    </TableCell>
+                                                );
+                                            })}
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -325,6 +434,19 @@ const App: React.FC = () => {
                                     <Typography variant="h6" color="success.dark">
                                         Minimum Fuel Required: {result.toFixed(5)}
                                     </Typography>
+                                    {(currentPath.length > 0 || (selectedHistoryItem && selectedHistoryItem.path.length > 0)) && (
+                                        <Box sx={{mt: 2}}>
+                                            <Typography variant="subtitle2" color="success.dark" gutterBottom>
+                                                Path Details:
+                                            </Typography>
+                                            <Typography variant="body2" color="success.dark">
+                                                {selectedHistoryItem ? selectedHistoryItem.path.length : currentPath.length} steps total
+                                            </Typography>
+                                            <Typography variant="caption" color="success.dark" sx={{display: 'block', mt: 1}}>
+                                                💚 Green = Start Position, 🔵 Blue shades = Path steps (darker = later steps)
+                                            </Typography>
+                                        </Box>
+                                    )}
                                 </CardContent>
                             </Card>
                         )}
@@ -335,6 +457,9 @@ const App: React.FC = () => {
                     <StyledPaper>
                         <Typography variant="h5" gutterBottom>
                             Previous Solutions
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{mb: 1}}>
+                            Click on any row to view the solution path on the matrix above
                         </Typography>
                         <Divider sx={{mb: 2}}/>
 
@@ -355,7 +480,15 @@ const App: React.FC = () => {
                                     </TableHead>
                                     <TableBody>
                                         {history.map((item) => (
-                                            <TableRow key={item.id}>
+                                            <TableRow 
+                                                key={item.id} 
+                                                onClick={() => handleHistoryItemClick(item)} 
+                                                sx={{
+                                                    cursor: 'pointer', 
+                                                    '&:hover': {backgroundColor: '#f5f5f5'},
+                                                    backgroundColor: selectedHistoryItem?.id === item.id ? '#e3f2fd' : 'inherit'
+                                                }}
+                                            >
                                                 <TableCell>{item.n}×{item.m}</TableCell>
                                                 <TableCell>{item.p}</TableCell>
                                                 <TableCell>{item.minFuel.toFixed(5)}</TableCell>
@@ -370,6 +503,38 @@ const App: React.FC = () => {
                         )}
                     </StyledPaper>
                 </Box>
+            </Box>
+
+            <Box sx={{mt: 4}}>
+                <Typography variant="h5" gutterBottom>
+                    Solution Path
+                </Typography>
+
+                {selectedHistoryItem && (
+                    <Button
+                        variant="outlined"
+                        onClick={() => setSelectedHistoryItem(null)}
+                        sx={{mb: 2}}
+                    >
+                        View Current Solution
+                    </Button>
+                )}
+
+                <TableContainer component={Paper} variant="outlined">
+                    <Table size="small">
+                        <TableBody>
+                            {Array.from({length: n}, (_, i) => (
+                                <TableRow key={i}>
+                                    {Array.from({length: m}, (_, j) => (
+                                        <TableCell key={j} sx={{p: 0.5, ...getCellStyle(i, j)}}>
+                                            {selectedHistoryItem ? getPathStepAtPosition(i, j)?.chestNumber || 0 : 0}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
             </Box>
         </Container>
     );

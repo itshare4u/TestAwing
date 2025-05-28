@@ -25,27 +25,31 @@ public class TreasureHuntService
                 throw new ArgumentException("Matrix column count doesn't match M");
         }
 
-        // Calculate minimum fuel required
-        var minFuel = CalculateMinimumFuel(request);
+        // Calculate minimum fuel required and get the path
+        var result = CalculateMinimumFuelWithPath(request);
+        var minFuel = result.MinFuel;
+        var path = result.Path;
 
         // Save to database
-        var result = new TreasureHuntResult
+        var dbResult = new TreasureHuntResult
         {
             N = request.N,
             M = request.M,
             P = request.P,
             MatrixJson = JsonSerializer.Serialize(request.Matrix),
+            PathJson = JsonSerializer.Serialize(path),
             MinFuel = minFuel,
             CreatedAt = DateTime.UtcNow
         };
 
-        _context.TreasureHuntResults.Add(result);
+        _context.TreasureHuntResults.Add(dbResult);
         await _context.SaveChangesAsync();
 
         return new TreasureHuntResponse
         {
             MinFuel = minFuel,
-            Id = result.Id
+            Id = dbResult.Id,
+            Path = path
         };
     }
 
@@ -110,7 +114,30 @@ public class TreasureHuntService
         };
     }
 
-    private double CalculateMinimumFuel(TreasureHuntRequest request)
+    public async Task<TreasureHuntResultWithPath?> GetTreasureHuntById(int id)
+    {
+        var result = await _context.TreasureHuntResults.FindAsync(id);
+        if (result == null) return null;
+
+        var matrix = JsonSerializer.Deserialize<int[][]>(result.MatrixJson);
+        var path = !string.IsNullOrEmpty(result.PathJson) 
+            ? JsonSerializer.Deserialize<List<PathStep>>(result.PathJson) ?? new List<PathStep>()
+            : new List<PathStep>();
+
+        return new TreasureHuntResultWithPath
+        {
+            Id = result.Id,
+            N = result.N,
+            M = result.M,
+            P = result.P,
+            Matrix = matrix ?? Array.Empty<int[]>(),
+            Path = path,
+            MinFuel = result.MinFuel,
+            CreatedAt = result.CreatedAt
+        };
+    }
+
+    private TreasureHuntResponse CalculateMinimumFuelWithPath(TreasureHuntRequest request)
     {
         var n = request.N;
         var m = request.M;
@@ -134,6 +161,17 @@ public class TreasureHuntService
         double totalFuel = 0;
         int currentRow = 0; // Starting at (1,1) which is (0,0) in 0-indexed
         int currentCol = 0;
+        var path = new List<PathStep>();
+
+        // Add starting position
+        path.Add(new PathStep
+        {
+            ChestNumber = 0,
+            Row = currentRow,
+            Col = currentCol,
+            FuelUsed = 0,
+            CumulativeFuel = 0
+        });
 
         // Visit chests from 1 to p in order, finding optimal path within each group
         for (int chest = 1; chest <= p; chest++)
@@ -163,11 +201,30 @@ public class TreasureHuntService
             
             totalFuel += minDistance;
             
+            // Add step to path
+            path.Add(new PathStep
+            {
+                ChestNumber = chest,
+                Row = bestRow,
+                Col = bestCol,
+                FuelUsed = minDistance,
+                CumulativeFuel = totalFuel
+            });
+            
             // Update current position
             currentRow = bestRow;
             currentCol = bestCol;
         }
 
-        return totalFuel;
+        return new TreasureHuntResponse
+        {
+            MinFuel = totalFuel,
+            Path = path
+        };
+    }
+
+    private double CalculateMinimumFuel(TreasureHuntRequest request)
+    {
+        return CalculateMinimumFuelWithPath(request).MinFuel;
     }
 }

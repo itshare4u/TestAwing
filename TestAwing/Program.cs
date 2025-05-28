@@ -110,6 +110,23 @@ app.MapGet("/api/treasure-hunts", async (TreasureHuntService service) =>
     return Results.Ok(results);
 });
 
+app.MapGet("/api/treasure-hunt/{id}", async (int id, TreasureHuntService service) =>
+{
+    try
+    {
+        var result = await service.GetTreasureHuntById(id);
+        if (result == null)
+        {
+            return Results.NotFound(new { message = "Treasure hunt not found" });
+        }
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+});
+
 // Generate random test data endpoint
 app.MapGet("/api/generate-random-data", (int? n, int? m, int? p, TreasureHuntService service) =>
 {
