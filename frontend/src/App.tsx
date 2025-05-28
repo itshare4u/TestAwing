@@ -161,7 +161,8 @@ const App: React.FC = () => {
                 matrix: numMatrix
             };
 
-            const response = await axios.post('http://localhost:5001/api/treasure-hunt', request);
+            // Use the parallel endpoint for better performance
+            const response = await axios.post('http://localhost:5001/api/treasure-hunt/parallel', request);
             setResult(response.data.minFuel);
             setCurrentPath(response.data.path || []);
             setSelectedHistoryItem(null); // Clear any selected history item
