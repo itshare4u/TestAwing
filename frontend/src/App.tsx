@@ -28,6 +28,10 @@ const App: React.FC = () => {
     const [n, setN] = useState<number>(3);
     const [m, setM] = useState<number>(3);
     const [p, setP] = useState<number>(3);
+    // Current dimensions that will be used for rendering
+    const [currentN, setCurrentN] = useState<number>(3);
+    const [currentM, setCurrentM] = useState<number>(3);
+    const [currentP, setCurrentP] = useState<number>(3);
     const [matrix, setMatrix] = useState<string[][]>([]);
 
     // State for results and path
@@ -61,6 +65,29 @@ const App: React.FC = () => {
 
     // Create matrix with current dimensions (only when button is clicked)
     const createMatrix = () => {
+        // Validate dimensions trước khi tạo ma trận
+        if (!n || n < 1) {
+            setError('Số hàng (n) phải lớn hơn hoặc bằng 1');
+            return;
+        }
+        if (!m || m < 1) {
+            setError('Số cột (m) phải lớn hơn hoặc bằng 1');
+            return;
+        }
+        if (!p || p < 1) {
+            setError('Giá trị kho báu (p) phải lớn hơn hoặc bằng 1');
+            return;
+        }
+        if (p > n * m) {
+            setError(`Giá trị kho báu (p = ${p}) không thể lớn hơn tổng số ô trên ma trận (n × m = ${n * m})`);
+            return;
+        }
+
+        // Update current dimensions
+        setCurrentN(n);
+        setCurrentM(m);
+        setCurrentP(p);
+        
         const newMatrix = Array(n).fill(null).map(() => Array(m).fill(''));
         setMatrix(newMatrix);
         setError('');
@@ -82,6 +109,9 @@ const App: React.FC = () => {
                 setN(3);
                 setM(3);
                 setP(3);
+                setCurrentN(3);
+                setCurrentM(3);
+                setCurrentP(3);
                 setMatrix([
                     ['3', '2', '2'],
                     ['2', '2', '2'],
@@ -92,6 +122,9 @@ const App: React.FC = () => {
                 setN(3);
                 setM(4);
                 setP(3);
+                setCurrentN(3);
+                setCurrentM(4);
+                setCurrentP(3);
                 setMatrix([
                     ['2', '1', '1', '1'],
                     ['1', '1', '1', '1'],
@@ -102,6 +135,9 @@ const App: React.FC = () => {
                 setN(3);
                 setM(4);
                 setP(12);
+                setCurrentN(3);
+                setCurrentM(4);
+                setCurrentP(12);
                 setMatrix([
                     ['1', '2', '3', '4'],
                     ['8', '7', '6', '5'],
@@ -114,6 +150,25 @@ const App: React.FC = () => {
     // Random data generation handler
     const generateRandomData = async () => {
         setError('');
+        
+        // Validate các thông số trước khi gửi request
+        if (!n || n < 1) {
+            setError('Số hàng (n) phải lớn hơn hoặc bằng 1');
+            return;
+        }
+        if (!m || m < 1) {
+            setError('Số cột (m) phải lớn hơn hoặc bằng 1');
+            return;
+        }
+        if (!p || p < 1) {
+            setError('Giá trị kho báu (p) phải lớn hơn hoặc bằng 1');
+            return;
+        }
+        if (p > n * m) {
+            setError(`Giá trị kho báu (p = ${p}) không thể lớn hơn tổng số ô trên ma trận (n × m = ${n * m})`);
+            return;
+        }
+        
         setLoading(true);
         
         try {
@@ -123,6 +178,9 @@ const App: React.FC = () => {
             setN(newN);
             setM(newM);
             setP(newP);
+            setCurrentN(newN);
+            setCurrentM(newM);
+            setCurrentP(newP);
             setMatrix(randomMatrix.map((row: number[]) => row.map(String)));
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to generate random data');
@@ -149,6 +207,11 @@ const App: React.FC = () => {
                     return;
                 }
                 
+                if (newP > newN * newM) {
+                    setError(`Giá trị kho báu (p = ${newP}) không thể lớn hơn tổng số ô trên ma trận (n × m = ${newN * newM})`);
+                    return;
+                }
+                
                 const newMatrix = lines.slice(1, newN + 1).map(line => 
                     line.trim().split(/\s+/)
                 );
@@ -161,6 +224,9 @@ const App: React.FC = () => {
                 setN(newN);
                 setM(newM);
                 setP(newP);
+                setCurrentN(newN);
+                setCurrentM(newM);
+                setCurrentP(newP);
                 setMatrix(newMatrix);
                 setError('');
             } catch (err) {
@@ -199,14 +265,14 @@ const App: React.FC = () => {
         }
 
         // Check if matrix exists and has correct dimensions
-        if (matrix.length !== n || matrix.some(row => row.length !== m)) {
+        if (matrix.length !== currentN || matrix.some(row => row.length !== currentM)) {
             setError('Matrix dimensions do not match current settings. Please create a new matrix.');
             return false;
         }
 
         // Check if all cells are filled
-        for (let i = 0; i < n; i++) {
-            for (let j = 0; j < m; j++) {
+        for (let i = 0; i < currentN; i++) {
+            for (let j = 0; j < currentM; j++) {
                 if (!matrix[i][j] || isNaN(Number(matrix[i][j]))) {
                     setError('All matrix cells must be filled with valid numbers');
                     return false;
@@ -218,13 +284,19 @@ const App: React.FC = () => {
         const numMatrix = matrix.map(row => row.map(cell => Number(cell)));
         const flatMatrix = numMatrix.flat();
         
-        if (flatMatrix.some(val => val < 1 || val > p)) {
-            setError(`All values must be between 1 and ${p}`);
+        if (flatMatrix.some(val => val < 1 || val > currentP)) {
+            setError(`All values must be between 1 and ${currentP}`);
             return false;
         }
 
-        if (!flatMatrix.includes(p)) {
-            setError(`Treasure chest with value ${p} must exist in the matrix`);
+        if (!flatMatrix.includes(currentP)) {
+            setError(`Treasure chest with value ${currentP} must exist in the matrix`);
+            return false;
+        }
+        
+        // Kiểm tra p có lớn hơn kích thước ma trận không
+        if (currentP > currentN * currentM) {
+            setError(`Giá trị kho báu (p = ${currentP}) không thể lớn hơn tổng số ô trên ma trận (n × m = ${currentN * currentM})`);
             return false;
         }
 
@@ -258,9 +330,9 @@ const App: React.FC = () => {
         try {
             const numMatrix = matrix.map(row => row.map(cell => Number(cell)));
             const request: TreasureHuntRequest = {
-                n,
-                m,
-                p,
+                n: currentN,
+                m: currentM,
+                p: currentP,
                 matrix: numMatrix
             };
 
@@ -302,22 +374,22 @@ const App: React.FC = () => {
                         onSolve={handleSolve}          
                     />
 
+                    {/* Error Display */}
+                    {error && (
+                        <Alert severity="error" sx={{mb: 2}}>
+                            {error}
+                        </Alert>
+                    )}
+
                     {/* Matrix Input */}
                     {matrix.length > 0 && (
                         <MatrixInput 
-                            n={n}
-                            m={m}
-                            p={p}
+                            n={currentN}
+                            m={currentM}
+                            p={currentP}
                             matrix={matrix}
                             onMatrixChange={handleMatrixChange}
                         />
-                    )}
-
-                    {/* Error Display */}
-                    {error && (
-                        <Alert severity="error" sx={{mt: 2}}>
-                            {error}
-                        </Alert>
                     )}
 
                     {/* Result Display */}
@@ -344,6 +416,9 @@ const App: React.FC = () => {
                                 setN(resultWithPath.n);
                                 setM(resultWithPath.m);
                                 setP(resultWithPath.p);
+                                setCurrentN(resultWithPath.n);
+                                setCurrentM(resultWithPath.m);
+                                setCurrentP(resultWithPath.p);
                                 setMatrix(resultWithPath.matrix.map(row => row.map(String)));
                                 setCurrentPath(resultWithPath.path);
                                 setResult(resultWithPath.minFuel);
@@ -360,9 +435,9 @@ const App: React.FC = () => {
             {/* Solution Path */}
             {(result !== null || selectedHistoryItem) && (
                 <SolutionPath 
-                    n={n}
-                    m={m}
-                    p={p}
+                    n={currentN}
+                    m={currentM}
+                    p={currentP}
                     matrix={matrix}
                     selectedHistoryMatrix={selectedHistoryItem?.matrix}
                     currentPath={currentPath}

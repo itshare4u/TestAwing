@@ -44,24 +44,59 @@ const ParameterInput: React.FC<ParameterInputProps> = ({
                     fullWidth
                     label="Rows (n)"
                     type="number"
-                    value={n}
-                    onChange={(e) => onNChange(Math.max(1, Math.min(500, Number(e.target.value))))}
+                    value={n === 0 ? '' : n}
+                    onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '') {
+                            // Cho phép giá trị trống
+                            onNChange(0);
+                        } else {
+                            const numValue = Number(value);
+                            if (!isNaN(numValue)) {
+                                // Vẫn áp dụng giới hạn max nhưng không cần min
+                                onNChange(Math.min(500, numValue));
+                            }
+                        }
+                    }}
                     inputProps={{min: 1, max: 500}}
                 />
                 <TextField
                     fullWidth
                     label="Columns (m)"
                     type="number"
-                    value={m}
-                    onChange={(e) => onMChange(Math.max(1, Math.min(500, Number(e.target.value))))}
+                    value={m === 0 ? '' : m}
+                    onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '') {
+                            // Cho phép giá trị trống
+                            onMChange(0);
+                        } else {
+                            const numValue = Number(value);
+                            if (!isNaN(numValue)) {
+                                // Vẫn áp dụng giới hạn max nhưng không cần min
+                                onMChange(Math.min(500, numValue));
+                            }
+                        }
+                    }}
                     inputProps={{min: 1, max: 500}}
                 />
                 <TextField
                     fullWidth
                     label="Max Chest (p)"
                     type="number"
-                    value={p}
-                    onChange={(e) => onPChange(Math.max(1, Number(e.target.value)))}
+                    value={p === 0 ? '' : p}
+                    onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '') {
+                            // Cho phép giá trị trống
+                            onPChange(0);
+                        } else {
+                            const numValue = Number(value);
+                            if (!isNaN(numValue)) {
+                                onPChange(numValue);
+                            }
+                        }
+                    }}
                     inputProps={{min: 1}}
                 />
             </Box>
@@ -147,7 +182,7 @@ const ParameterInput: React.FC<ParameterInputProps> = ({
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                 <Typography variant="body2" color="text.secondary">
-                    Matrix size: {n}×{m} = {n * m} cells
+                    Matrix size: {n || '?'}×{m || '?'} = {n && m ? n * m : '?'} cells
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                     Using virtualized view for optimal performance
