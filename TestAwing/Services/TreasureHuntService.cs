@@ -179,9 +179,13 @@ public class TreasureHuntService
             for (int j = 0; j < m; j++)
             {
                 var chestNum = matrix[i][j];
-                if (!chestPositions.ContainsKey(chestNum))
-                    chestPositions[chestNum] = new List<(int, int)>();
-                chestPositions[chestNum].Add((i, j));
+                // Only add positions that actually contain chests (ignore 0 values)
+                if (chestNum > 0)
+                {
+                    if (!chestPositions.ContainsKey(chestNum))
+                        chestPositions[chestNum] = new List<(int, int)>();
+                    chestPositions[chestNum].Add((i, j));
+                }
             }
         }
 

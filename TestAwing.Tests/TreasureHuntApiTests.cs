@@ -108,9 +108,11 @@ public class TreasureHuntApiTests : IClassFixture<WebApplicationFactory<Program>
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         
-        var results = await response.Content.ReadFromJsonAsync<List<TreasureHuntResult>>();
-        Assert.NotNull(results);
-        Assert.Empty(results);
+        var paginatedResults = await response.Content.ReadFromJsonAsync<PaginatedResponse<TreasureHuntResult>>();
+        Assert.NotNull(paginatedResults);
+        Assert.Empty(paginatedResults.Data);
+        Assert.Equal(0, paginatedResults.TotalCount);
+        Assert.Equal(1, paginatedResults.Page);
     }
 
     [Fact]
@@ -133,12 +135,13 @@ public class TreasureHuntApiTests : IClassFixture<WebApplicationFactory<Program>
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         
-        var results = await response.Content.ReadFromJsonAsync<List<TreasureHuntResult>>();
-        Assert.NotNull(results);
-        Assert.Single(results);
-        Assert.Equal(2, results[0].N);
-        Assert.Equal(2, results[0].M);
-        Assert.Equal(2, results[0].P);
+        var paginatedResults = await response.Content.ReadFromJsonAsync<PaginatedResponse<TreasureHuntResult>>();
+        Assert.NotNull(paginatedResults);
+        Assert.Single(paginatedResults.Data);
+        Assert.Equal(1, paginatedResults.TotalCount);
+        Assert.Equal(2, paginatedResults.Data[0].N);
+        Assert.Equal(2, paginatedResults.Data[0].M);
+        Assert.Equal(2, paginatedResults.Data[0].P);
     }
 
     [Theory]
@@ -317,9 +320,9 @@ public class TreasureHuntApiTests : IClassFixture<WebApplicationFactory<Program>
         var allResponse = await _client.GetAsync("/api/treasure-hunts");
         Assert.Equal(HttpStatusCode.OK, allResponse.StatusCode);
         
-        var allResults = await allResponse.Content.ReadFromJsonAsync<List<TreasureHuntResult>>();
-        Assert.NotNull(allResults);
-        Assert.Contains(allResults, r => r.Id == solveResult.Id);
+        var paginatedResults = await allResponse.Content.ReadFromJsonAsync<PaginatedResponse<TreasureHuntResult>>();
+        Assert.NotNull(paginatedResults);
+        Assert.Contains(paginatedResults.Data, r => r.Id == solveResult.Id);
 
         // 4. Get specific treasure hunt by ID
         var specificResponse = await _client.GetAsync($"/api/treasure-hunt/{solveResult.Id}");

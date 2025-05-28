@@ -38,7 +38,7 @@ switch (databaseProvider.ToLower())
         break;
 }
 
-builder.Services.AddScoped<TreasureHuntService>();
+builder.Services.AddScoped<OptimizedTreasureHuntService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowLocalhost",
@@ -87,7 +87,7 @@ app.UseHttpsRedirection();
 app.UseCors("AllowLocalhost");
 
 // Treasure Hunt API endpoints
-app.MapPost("/api/treasure-hunt", async (TreasureHuntRequest request, TreasureHuntService service) =>
+app.MapPost("/api/treasure-hunt", async (TreasureHuntRequest request, OptimizedTreasureHuntService service) =>
 {
     try
     {
@@ -104,7 +104,7 @@ app.MapPost("/api/treasure-hunt", async (TreasureHuntRequest request, TreasureHu
     }
 });
 
-app.MapGet("/api/treasure-hunts", async (int? page, int? pageSize, TreasureHuntService service) =>
+app.MapGet("/api/treasure-hunts", async (int? page, int? pageSize, OptimizedTreasureHuntService service) =>
 {
     var pageNum = page ?? 1;
     var pageSizeNum = pageSize ?? 8;
@@ -113,7 +113,7 @@ app.MapGet("/api/treasure-hunts", async (int? page, int? pageSize, TreasureHuntS
     return Results.Ok(results);
 });
 
-app.MapGet("/api/treasure-hunt/{id}", async (int id, TreasureHuntService service) =>
+app.MapGet("/api/treasure-hunt/{id}", async (int id, OptimizedTreasureHuntService service) =>
 {
     try
     {
@@ -131,7 +131,7 @@ app.MapGet("/api/treasure-hunt/{id}", async (int id, TreasureHuntService service
 });
 
 // Generate random test data endpoint
-app.MapGet("/api/generate-random-data", (int? n, int? m, int? p, TreasureHuntService service) =>
+app.MapGet("/api/generate-random-data", (int? n, int? m, int? p, OptimizedTreasureHuntService service) =>
 {
     try
     {

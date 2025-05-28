@@ -677,7 +677,10 @@ const App: React.FC = () => {
                                                                 textAlign: 'center'
                                                             }}
                                                         >
-                                                            Step {pathStep.chestNumber === 0 ? 'Start' : pathStep.chestNumber} | Fuel Consum: {formatFuelAsMath(pathStep.fuelUsed)}
+                                                            {pathStep.chestNumber === 0 
+                                                                ? 'Start Position'
+                                                                : `Step ${pathStep.chestNumber} | Fuel Used: ${formatFuelAsMath(pathStep.fuelUsed)}`
+                                                            }
                                                         </Typography>
                                                     )}
                                                 </TableCell>
