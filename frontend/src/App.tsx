@@ -465,7 +465,26 @@ const App: React.FC = () => {
                                                             value={matrix[i]?.[j] || ''}
                                                             onChange={(e) => handleMatrixChange(i, j, e.target.value)}
                                                             inputProps={{min: 1, max: p, style: {textAlign: 'center'}}}
-                                                            sx={{width: '60px'}}
+                                                            sx={{
+                                                                width: '60px',
+                                                                '& .MuiOutlinedInput-root': {
+                                                                    backgroundColor: matrix[i]?.[j] && Number(matrix[i][j]) === p ? '#ffebee' : 'transparent',
+                                                                    '& fieldset': {
+                                                                        borderColor: matrix[i]?.[j] && Number(matrix[i][j]) === p ? '#f44336' : undefined,
+                                                                        borderWidth: matrix[i]?.[j] && Number(matrix[i][j]) === p ? '2px' : '1px'
+                                                                    },
+                                                                    '&:hover fieldset': {
+                                                                        borderColor: matrix[i]?.[j] && Number(matrix[i][j]) === p ? '#d32f2f' : undefined
+                                                                    },
+                                                                    '&.Mui-focused fieldset': {
+                                                                        borderColor: matrix[i]?.[j] && Number(matrix[i][j]) === p ? '#d32f2f' : undefined
+                                                                    }
+                                                                },
+                                                                '& .MuiOutlinedInput-input': {
+                                                                    color: matrix[i]?.[j] && Number(matrix[i][j]) === p ? '#d32f2f' : 'inherit',
+                                                                    fontWeight: matrix[i]?.[j] && Number(matrix[i][j]) === p ? 'bold' : 'normal'
+                                                                }
+                                                            }}
                                                         />
                                                     </TableCell>
                                                 ))}
@@ -629,10 +648,22 @@ const App: React.FC = () => {
                                         {Array.from({length: m}, (_, j) => {
                                             const cellStyle = getCellStyle(i, j);
                                             const pathStep = getPathStepAtPosition(i, j);
+                                            const cellValue = selectedHistoryItem ? selectedHistoryItem.matrix[i][j] : (matrix[i] && matrix[i][j] ? Number(matrix[i][j]) : 0);
+                                            const isTreasureChest = cellValue === p;
+                                            
                                             return (
                                                 <TableCell key={j} sx={{p: 0.5, width: '120px', minWidth: '120px', ...cellStyle}}>
-                                                    <div style={{ textAlign: 'center', fontSize: '14px', fontWeight: 'bold' }}>
-                                                        {(selectedHistoryItem ? selectedHistoryItem.matrix[i][j] : (matrix[i] && matrix[i][j] ? Number(matrix[i][j]) : 0))}
+                                                    <div style={{ 
+                                                        textAlign: 'center', 
+                                                        fontSize: '14px', 
+                                                        fontWeight: 'bold',
+                                                        color: isTreasureChest ? '#d32f2f' : (cellStyle.color || 'inherit'),
+                                                        backgroundColor: isTreasureChest ? '#ffebee' : (cellStyle.backgroundColor || 'transparent'),
+                                                        padding: '2px 4px',
+                                                        borderRadius: '4px',
+                                                        border: isTreasureChest ? '2px solid #f44336' : 'none'
+                                                    }}>
+                                                        {cellValue}
                                                     </div>
                                                     {pathStep && (
                                                         <Typography 
