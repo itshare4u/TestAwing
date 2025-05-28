@@ -17,6 +17,7 @@ import {
     CardContent,
     Divider
 } from '@mui/material';
+import { Shuffle } from '@mui/icons-material';
 import {styled} from '@mui/material/styles';
 import axios from 'axios';
 
@@ -177,6 +178,34 @@ const App: React.FC = () => {
         }
     };
 
+    const generateRandomData = async () => {
+        setError('');
+        setLoading(true);
+        
+        try {
+            const response = await axios.get(`http://localhost:5001/api/generate-random-data?n=${n}&m=${m}&p=${p}`);
+            const randomData = response.data;
+            
+            // Update the form with the generated data
+            setN(randomData.n);
+            setM(randomData.m);
+            setP(randomData.p);
+            
+            // Convert the matrix to string format for the UI
+            setTimeout(() => {
+                const stringMatrix = randomData.matrix.map((row: number[]) => 
+                    row.map((cell: number) => cell.toString())
+                );
+                setMatrix(stringMatrix);
+            }, 100);
+            
+        } catch (err: any) {
+            setError(err.response?.data?.message || 'Failed to generate random data');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <Container maxWidth="lg" sx={{py: 4}}>
             <Typography variant="h3" component="h1" gutterBottom align="center" color="primary">
@@ -221,7 +250,7 @@ const App: React.FC = () => {
                             <Typography variant="h6" gutterBottom>
                                 Load Examples:
                             </Typography>
-                            <Box sx={{display: 'flex', gap: 1}}>
+                            <Box sx={{display: 'flex', gap: 1, flexWrap: 'wrap'}}>
                                 <Button variant="outlined" size="small" onClick={() => loadExample(1)}>
                                     Example 1
                                 </Button>
@@ -230,6 +259,16 @@ const App: React.FC = () => {
                                 </Button>
                                 <Button variant="outlined" size="small" onClick={() => loadExample(3)}>
                                     Example 3
+                                </Button>
+                                <Button 
+                                    variant="contained" 
+                                    size="small" 
+                                    color="secondary"
+                                    onClick={generateRandomData}
+                                    disabled={loading}
+                                    startIcon={<Shuffle />}
+                                >
+                                    Random Data
                                 </Button>
                             </Box>
                         </Box>

@@ -56,6 +56,57 @@ public class TreasureHuntService
             .ToListAsync();
     }
 
+    public TreasureHuntRequest GenerateRandomTestData(int n, int m, int p)
+    {
+        var random = new Random();
+        var matrix = new int[n][];
+        
+        // Initialize matrix
+        for (int i = 0; i < n; i++)
+        {
+            matrix[i] = new int[m];
+        }
+
+        // Create a list of all positions
+        var positions = new List<(int row, int col)>();
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = 0; j < m; j++)
+            {
+                positions.Add((i, j));
+            }
+        }
+
+        // Shuffle positions
+        for (int i = positions.Count - 1; i > 0; i--)
+        {
+            int j = random.Next(i + 1);
+            (positions[i], positions[j]) = (positions[j], positions[i]);
+        }
+
+        // Ensure each chest number from 1 to p appears at least once
+        for (int chest = 1; chest <= p; chest++)
+        {
+            var pos = positions[chest - 1];
+            matrix[pos.row][pos.col] = chest;
+        }
+
+        // Fill remaining positions with random values from 1 to p
+        for (int i = p; i < positions.Count; i++)
+        {
+            var pos = positions[i];
+            matrix[pos.row][pos.col] = random.Next(1, p + 1);
+        }
+
+        return new TreasureHuntRequest
+        {
+            N = n,
+            M = m,
+            P = p,
+            Matrix = matrix
+        };
+    }
+
     private double CalculateMinimumFuel(TreasureHuntRequest request)
     {
         var n = request.N;

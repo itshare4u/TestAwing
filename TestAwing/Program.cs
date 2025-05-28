@@ -110,6 +110,37 @@ app.MapGet("/api/treasure-hunts", async (TreasureHuntService service) =>
     return Results.Ok(results);
 });
 
+// Generate random test data endpoint
+app.MapGet("/api/generate-random-data", (int? n, int? m, int? p, TreasureHuntService service) =>
+{
+    try
+    {
+        // Use provided parameters or defaults
+        var rows = n ?? 5;
+        var cols = m ?? 5;
+        var maxChest = p ?? 10;
+        
+        // Validate parameters
+        if (rows < 1 || rows > 500 || cols < 1 || cols > 500 || maxChest < 1)
+        {
+            return Results.BadRequest(new { message = "Invalid parameters. n and m must be 1-500, p must be >= 1" });
+        }
+        
+        // Ensure we have enough positions for all chest numbers
+        if (rows * cols < maxChest)
+        {
+            return Results.BadRequest(new { message = "Matrix size (n×m) must be at least p to fit all chest numbers" });
+        }
+
+        var randomData = service.GenerateRandomTestData(rows, cols, maxChest);
+        return Results.Ok(randomData);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+});
+
 // Configure to run on port 5001
 app.Urls.Add("http://localhost:5001");
 
