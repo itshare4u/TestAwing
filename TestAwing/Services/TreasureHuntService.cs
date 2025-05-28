@@ -58,6 +58,16 @@ public class TreasureHuntService
 
     public TreasureHuntRequest GenerateRandomTestData(int n, int m, int p)
     {
+        // According to treasure hunt problem rules:
+        // - Each chest number from 1 to p must appear exactly once
+        // - Each chest contains key for next numbered chest  
+        // - Therefore p must equal n×m (total positions)
+        
+        if (p != n * m)
+        {
+            throw new ArgumentException($"For valid treasure hunt: p must equal n×m. Got p={p}, n×m={n * m}");
+        }
+        
         var random = new Random();
         var matrix = new int[n][];
         
@@ -67,35 +77,28 @@ public class TreasureHuntService
             matrix[i] = new int[m];
         }
 
-        // Create a list of all positions
-        var positions = new List<(int row, int col)>();
-        for (int i = 0; i < n; i++)
+        // Create a list of all chest numbers from 1 to p
+        var chestNumbers = new List<int>();
+        for (int i = 1; i <= p; i++)
         {
-            for (int j = 0; j < m; j++)
-            {
-                positions.Add((i, j));
-            }
+            chestNumbers.Add(i);
         }
 
-        // Shuffle positions
-        for (int i = positions.Count - 1; i > 0; i--)
+        // Shuffle the chest numbers using Fisher-Yates algorithm
+        for (int i = chestNumbers.Count - 1; i > 0; i--)
         {
             int j = random.Next(i + 1);
-            (positions[i], positions[j]) = (positions[j], positions[i]);
+            (chestNumbers[i], chestNumbers[j]) = (chestNumbers[j], chestNumbers[i]);
         }
 
-        // Ensure each chest number from 1 to p appears at least once
-        for (int chest = 1; chest <= p; chest++)
+        // Fill matrix with shuffled chest numbers
+        int chestIndex = 0;
+        for (int row = 0; row < n; row++)
         {
-            var pos = positions[chest - 1];
-            matrix[pos.row][pos.col] = chest;
-        }
-
-        // Fill remaining positions with random values from 1 to p
-        for (int i = p; i < positions.Count; i++)
-        {
-            var pos = positions[i];
-            matrix[pos.row][pos.col] = random.Next(1, p + 1);
+            for (int col = 0; col < m; col++)
+            {
+                matrix[row][col] = chestNumbers[chestIndex++];
+            }
         }
 
         return new TreasureHuntRequest

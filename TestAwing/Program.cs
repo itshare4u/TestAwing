@@ -116,9 +116,9 @@ app.MapGet("/api/generate-random-data", (int? n, int? m, int? p, TreasureHuntSer
     try
     {
         // Use provided parameters or defaults
-        var rows = n ?? 5;
-        var cols = m ?? 5;
-        var maxChest = p ?? 10;
+        var rows = n ?? 3;
+        var cols = m ?? 3;
+        var maxChest = p ?? (rows * cols); // Default p to n×m for valid treasure hunt
         
         // Validate parameters
         if (rows < 1 || rows > 500 || cols < 1 || cols > 500 || maxChest < 1)
@@ -126,10 +126,13 @@ app.MapGet("/api/generate-random-data", (int? n, int? m, int? p, TreasureHuntSer
             return Results.BadRequest(new { message = "Invalid parameters. n and m must be 1-500, p must be >= 1" });
         }
         
-        // Ensure we have enough positions for all chest numbers
-        if (rows * cols < maxChest)
+        // For valid treasure hunt: p must equal n×m (each chest number 1 to p appears exactly once)
+        if (maxChest != rows * cols)
         {
-            return Results.BadRequest(new { message = "Matrix size (n×m) must be at least p to fit all chest numbers" });
+            return Results.BadRequest(new { 
+                message = $"For valid treasure hunt: p must equal n×m. Expected p={rows * cols}, got p={maxChest}. " +
+                          "Each chest number from 1 to p must appear exactly once in the matrix." 
+            });
         }
 
         var randomData = service.GenerateRandomTestData(rows, cols, maxChest);

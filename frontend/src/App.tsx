@@ -183,7 +183,9 @@ const App: React.FC = () => {
         setLoading(true);
         
         try {
-            const response = await axios.get(`http://localhost:5001/api/generate-random-data?n=${n}&m=${m}&p=${p}`);
+            // For valid treasure hunt: p must equal n×m
+            const validP = n * m;
+            const response = await axios.get(`http://localhost:5001/api/generate-random-data?n=${n}&m=${m}&p=${validP}`);
             const randomData = response.data;
             
             // Update the form with the generated data
@@ -273,9 +275,20 @@ const App: React.FC = () => {
                             </Box>
                         </Box>
 
-                        <Typography variant="h6" gutterBottom>
-                            Matrix Input
-                        </Typography>
+                        <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2}}>
+                            <Typography variant="h6">
+                                Matrix Input
+                            </Typography>
+                            <Button
+                                variant="contained"
+                                size="large"
+                                onClick={handleSolve}
+                                disabled={loading}
+                                sx={{minWidth: '200px'}}
+                            >
+                                {loading ? 'Solving...' : 'Solve Treasure Hunt'}
+                            </Button>
+                        </Box>
 
                         <TableContainer component={Paper} variant="outlined" sx={{mb: 2}}>
                             <Table size="small">
@@ -305,16 +318,6 @@ const App: React.FC = () => {
                                 {error}
                             </Alert>
                         )}
-
-                        <Button
-                            variant="contained"
-                            size="large"
-                            onClick={handleSolve}
-                            disabled={loading}
-                            fullWidth
-                        >
-                            {loading ? 'Solving...' : 'Solve Treasure Hunt'}
-                        </Button>
 
                         {result !== null && (
                             <Card sx={{mt: 2, bgcolor: 'success.light'}}>

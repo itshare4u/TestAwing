@@ -18,8 +18,17 @@ Fuel required to travel from (x1,y1) to (x2,y2) = √((x1-x2)² + (y1-y2)²)
 - ✅ Database storage of all solutions
 - ✅ History of previous treasure hunts
 - ✅ Example problems pre-loaded
+- ✅ **Random test data generation** (follows problem constraints)
 - ✅ Material-UI modern interface
 - ✅ Responsive design
+
+## Problem Constraints
+
+For a valid treasure hunt problem:
+- **Each chest number from 1 to p must appear exactly once** in the matrix
+- **p must equal n×m** (total number of positions)
+- This ensures every chest has a unique key and the problem is solvable
+- The random data generator automatically enforces these constraints
 
 ## Tech Stack
 
@@ -97,6 +106,19 @@ Solve a treasure hunt problem
 ### GET /api/treasure-hunts
 
 Get all previously solved treasure hunts
+
+### GET /api/generate-random-data
+
+Generate random test data that follows treasure hunt constraints
+
+**Parameters:**
+- `n` (optional): Number of rows (default: 3)
+- `m` (optional): Number of columns (default: 3)  
+- `p` (optional): Will be automatically set to n×m for valid treasure hunt
+
+**Example:** `/api/generate-random-data?n=4&m=4`
+
+Returns a valid treasure hunt matrix where each number from 1 to p appears exactly once.
 
 ## Example Test Cases
 
