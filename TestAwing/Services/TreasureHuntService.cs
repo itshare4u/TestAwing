@@ -101,11 +101,12 @@ public class TreasureHuntService
             matrix[pos.row][pos.col] = chest;
         }
 
-        // Fill remaining positions with random values from 1 to p
+        // Fill remaining positions with random values from 1 to (p-1)
+        // This ensures the maximum chest number (p) appears exactly once
         for (int i = p; i < positions.Count; i++)
         {
             var pos = positions[i];
-            matrix[pos.row][pos.col] = random.Next(1, p + 1);
+            matrix[pos.row][pos.col] = random.Next(1, p); // p-1 is the max value (exclusive upper bound)
         }
 
         return new TreasureHuntRequest

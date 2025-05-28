@@ -126,6 +126,10 @@ public class TreasureHuntServiceTests : IDisposable
             Assert.Contains(chest, allValues);
         }
         
+        // Verify that the maximum chest number (p) appears exactly once
+        var maxChestCount = allValues.Count(x => x == p);
+        Assert.Equal(1, maxChestCount);
+        
         // Verify all values are in valid range
         Assert.All(allValues, value => Assert.InRange(value, 1, p));
     }
@@ -225,6 +229,10 @@ public class TreasureHuntServiceTests : IDisposable
         {
             Assert.Contains(chest, allValues);
         }
+        
+        // Verify that the maximum chest number (p) appears exactly once
+        var maxChestCount = allValues.Count(x => x == p);
+        Assert.Equal(1, maxChestCount);
     }
 
     [Fact]
@@ -330,6 +338,36 @@ public class TreasureHuntServiceTests : IDisposable
         
         // Each chest number from 1 to p should appear at least once
         for (int chest = 1; chest <= p; chest++)
+        {
+            Assert.Contains(chest, allValues);
+        }
+        
+        // Verify that the maximum chest number (p) appears exactly once
+        var maxChestCount = allValues.Count(x => x == p);
+        Assert.Equal(1, maxChestCount);
+        
+        // All values should be in range [1, p]
+        Assert.All(allValues, value => Assert.InRange(value, 1, p));
+    }
+
+    [Fact]
+    public void GenerateRandomTestData_MaxChestAppearsExactlyOnce()
+    {
+        // Arrange
+        int n = 5, m = 6, p = 10; // 30 total positions, max chest should appear only once
+
+        // Act
+        var result = _service.GenerateRandomTestData(n, m, p);
+
+        // Assert
+        var allValues = result.Matrix.SelectMany(row => row).ToList();
+        
+        // Verify the maximum chest number (p) appears exactly once
+        var maxChestCount = allValues.Count(x => x == p);
+        Assert.Equal(1, maxChestCount);
+        
+        // Verify other chest numbers from 1 to (p-1) can appear multiple times
+        for (int chest = 1; chest < p; chest++)
         {
             Assert.Contains(chest, allValues);
         }
