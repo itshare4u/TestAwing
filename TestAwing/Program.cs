@@ -135,7 +135,7 @@ app.MapGet("/api/generate-random-data", (int? n, int? m, int? p, TreasureHuntSer
         // Use provided parameters or defaults
         var rows = n ?? 3;
         var cols = m ?? 3;
-        var maxChest = p ?? (rows * cols); // Default p to n×m for valid treasure hunt
+        var maxChest = p ?? Math.Min(rows * cols, 10); // Default p to reasonable value
         
         // Validate parameters
         if (rows < 1 || rows > 500 || cols < 1 || cols > 500 || maxChest < 1)
@@ -143,12 +143,11 @@ app.MapGet("/api/generate-random-data", (int? n, int? m, int? p, TreasureHuntSer
             return Results.BadRequest(new { message = "Invalid parameters. n and m must be 1-500, p must be >= 1" });
         }
         
-        // For valid treasure hunt: p must equal n×m (each chest number 1 to p appears exactly once)
-        if (maxChest != rows * cols)
+        // Ensure we have enough positions for all chest numbers (each chest 1 to p must appear at least once)
+        if (rows * cols < maxChest)
         {
             return Results.BadRequest(new { 
-                message = $"For valid treasure hunt: p must equal n×m. Expected p={rows * cols}, got p={maxChest}. " +
-                          "Each chest number from 1 to p must appear exactly once in the matrix." 
+                message = $"Matrix size (n×m = {rows * cols}) must be at least p ({maxChest}) to fit all chest numbers from 1 to p" 
             });
         }
 
@@ -165,3 +164,6 @@ app.MapGet("/api/generate-random-data", (int? n, int? m, int? p, TreasureHuntSer
 app.Urls.Add("http://localhost:5001");
 
 app.Run();
+
+// Make Program class accessible for testing
+public partial class Program { }

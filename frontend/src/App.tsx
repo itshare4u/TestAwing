@@ -206,9 +206,8 @@ const App: React.FC = () => {
         setLoading(true);
         
         try {
-            // For valid treasure hunt: p must equal n×m
-            const validP = n * m;
-            const response = await axios.get(`http://localhost:5001/api/generate-random-data?n=${n}&m=${m}&p=${validP}`);
+            // Use current form values for n, m, p
+            const response = await axios.get(`http://localhost:5001/api/generate-random-data?n=${n}&m=${m}&p=${p}`);
             const randomData = response.data;
             
             // Update the form with the generated data
