@@ -431,31 +431,50 @@ const App: React.FC = () => {
                             </Button>
                         </Box>
 
-                        <TableContainer component={Paper} variant="outlined" sx={{mb: 2}}>
-                            <Table size="small">
-                                <TableBody>
-                                    {Array.from({length: n}, (_, i) => (
-                                        <TableRow key={i}>
-                                            {Array.from({length: m}, (_, j) => (
-                                                <TableCell 
-                                                    key={j} 
-                                                    sx={{p: 0.5}}
-                                                >
-                                                    <TextField
-                                                        size="small"
-                                                        type="number"
-                                                        value={matrix[i]?.[j] || ''}
-                                                        onChange={(e) => handleMatrixChange(i, j, e.target.value)}
-                                                        inputProps={{min: 1, max: p, style: {textAlign: 'center'}}}
-                                                        sx={{width: '60px'}}
-                                                    />
-                                                </TableCell>
-                                            ))}
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
+                        {/* Fixed height and width wrapper for matrix input */}
+                        <Box sx={{ 
+                            maxHeight: 500,
+                            minHeight: 200,
+                            maxWidth: '100%',
+                            border: '1px solid rgba(0, 0, 0, 0.12)',
+                            borderRadius: 1,
+                            overflow: 'auto',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            backgroundColor: '#fff',
+                            mb: 2
+                        }}>
+                            <TableContainer component={Paper} variant="outlined" sx={{ 
+                                flex: 1,
+                                border: 'none',
+                                overflow: 'auto',
+                                maxHeight: '100%'
+                            }}>
+                                <Table size="small">
+                                    <TableBody>
+                                        {Array.from({length: n}, (_, i) => (
+                                            <TableRow key={i}>
+                                                {Array.from({length: m}, (_, j) => (
+                                                    <TableCell 
+                                                        key={j} 
+                                                        sx={{p: 0.5, minWidth: '70px'}}
+                                                    >
+                                                        <TextField
+                                                            size="small"
+                                                            type="number"
+                                                            value={matrix[i]?.[j] || ''}
+                                                            onChange={(e) => handleMatrixChange(i, j, e.target.value)}
+                                                            inputProps={{min: 1, max: p, style: {textAlign: 'center'}}}
+                                                            sx={{width: '60px'}}
+                                                        />
+                                                    </TableCell>
+                                                ))}
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        </Box>
 
                         {error && (
                             <Alert severity="error" sx={{mb: 2}}>
@@ -501,7 +520,8 @@ const App: React.FC = () => {
 
                         {history.length === 0 ? (
                             <Box sx={{ 
-                                height: 400, 
+                                minHeight: 300,
+                                maxHeight: 400, 
                                 display: 'flex', 
                                 alignItems: 'center', 
                                 justifyContent: 'center',
@@ -515,27 +535,30 @@ const App: React.FC = () => {
                             </Box>
                         ) : (
                             <>
-                                {/* Fixed height wrapper for table */}
+                                {/* Fixed max height wrapper for table */}
                                 <Box sx={{ 
-                                    height: 400,
+                                    maxHeight: 400,
+                                    minHeight: 300,
                                     border: '1px solid rgba(0, 0, 0, 0.12)',
                                     borderRadius: 1,
                                     overflow: 'hidden',
                                     display: 'flex',
-                                    flexDirection: 'column'
+                                    flexDirection: 'column',
+                                    backgroundColor: '#fff'
                                 }}>
                                     <TableContainer component={Paper} variant="outlined" sx={{ 
                                         flex: 1,
                                         border: 'none',
-                                        overflow: 'auto'
+                                        overflow: 'auto',
+                                        maxHeight: '100%'
                                     }}>
                                         <Table size="small" stickyHeader>
                                             <TableHead>
                                                 <TableRow>
-                                                    <TableCell>N×M</TableCell>
-                                                    <TableCell>P</TableCell>
-                                                    <TableCell>Min Fuel</TableCell>
-                                                    <TableCell>Date</TableCell>
+                                                    <TableCell sx={{ backgroundColor: '#f5f5f5', fontWeight: 'bold' }}>N×M</TableCell>
+                                                    <TableCell sx={{ backgroundColor: '#f5f5f5', fontWeight: 'bold' }}>P</TableCell>
+                                                    <TableCell sx={{ backgroundColor: '#f5f5f5', fontWeight: 'bold' }}>Min Fuel</TableCell>
+                                                    <TableCell sx={{ backgroundColor: '#f5f5f5', fontWeight: 'bold' }}>Date</TableCell>
                                                 </TableRow>
                                             </TableHead>
                                             <TableBody>
@@ -577,65 +600,65 @@ const App: React.FC = () => {
                             </>
                         )}
                     </StyledPaper>
-
-                    {/* Solution Path - same row as input */}
-                    {(result !== null || selectedHistoryItem) && (
-                        <StyledPaper>
-                            <Typography variant="h6" gutterBottom>
-                                Solution Path
-                            </Typography>
-
-                            {selectedHistoryItem && (
-                                <Button
-                                    variant="outlined"
-                                    onClick={() => setSelectedHistoryItem(null)}
-                                    sx={{mb: 2}}
-                                    size="small"
-                                >
-                                    View Current Solution
-                                </Button>
-                            )}
-
-                            <TableContainer component={Paper} variant="outlined">
-                                <Table size="small">
-                                    <TableBody>
-                                        {Array.from({length: n}, (_, i) => (
-                                            <TableRow key={i}>
-                                                {Array.from({length: m}, (_, j) => {
-                                                    const cellStyle = getCellStyle(i, j);
-                                                    const pathStep = getPathStepAtPosition(i, j);
-                                                    return (
-                                                        <TableCell key={j} sx={{p: 0.5, width: '120px', minWidth: '120px', ...cellStyle}}>
-                                                            <div style={{ textAlign: 'center', fontSize: '14px', fontWeight: 'bold' }}>
-                                                                {(selectedHistoryItem ? selectedHistoryItem.matrix[i][j] : (matrix[i] && matrix[i][j] ? Number(matrix[i][j]) : 0))}
-                                                            </div>
-                                                            {pathStep && (
-                                                                <Typography 
-                                                                    variant="caption" 
-                                                                    sx={{
-                                                                        display: 'block',
-                                                                        fontSize: '10px',
-                                                                        lineHeight: 1,
-                                                                        mt: 0.5,
-                                                                        color: cellStyle.color || 'inherit',
-                                                                        textAlign: 'center'
-                                                                    }}
-                                                                >
-                                                                    Step {pathStep.chestNumber === 0 ? 'Start' : pathStep.chestNumber} | Fuel Consum: {formatFuelAsMath(pathStep.fuelUsed)}
-                                                                </Typography>
-                                                            )}
-                                                        </TableCell>
-                                                    );
-                                                })}
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
-                        </StyledPaper>
-                    )}
                 </Box>
             </Box>
+            
+            {/* Solution Path - Full width below entire interface */}
+            {(result !== null || selectedHistoryItem) && (
+                <StyledPaper>
+                    <Typography variant="h6" gutterBottom>
+                        Solution Path
+                    </Typography>
+
+                    {selectedHistoryItem && (
+                        <Button
+                            variant="outlined"
+                            onClick={() => setSelectedHistoryItem(null)}
+                            sx={{mb: 2}}
+                            size="small"
+                        >
+                            View Current Solution
+                        </Button>
+                    )}
+
+                    <TableContainer component={Paper} variant="outlined">
+                        <Table size="small">
+                            <TableBody>
+                                {Array.from({length: n}, (_, i) => (
+                                    <TableRow key={i}>
+                                        {Array.from({length: m}, (_, j) => {
+                                            const cellStyle = getCellStyle(i, j);
+                                            const pathStep = getPathStepAtPosition(i, j);
+                                            return (
+                                                <TableCell key={j} sx={{p: 0.5, width: '120px', minWidth: '120px', ...cellStyle}}>
+                                                    <div style={{ textAlign: 'center', fontSize: '14px', fontWeight: 'bold' }}>
+                                                        {(selectedHistoryItem ? selectedHistoryItem.matrix[i][j] : (matrix[i] && matrix[i][j] ? Number(matrix[i][j]) : 0))}
+                                                    </div>
+                                                    {pathStep && (
+                                                        <Typography 
+                                                            variant="caption" 
+                                                            sx={{
+                                                                display: 'block',
+                                                                fontSize: '10px',
+                                                                lineHeight: 1,
+                                                                mt: 0.5,
+                                                                color: cellStyle.color || 'inherit',
+                                                                textAlign: 'center'
+                                                            }}
+                                                        >
+                                                            Step {pathStep.chestNumber === 0 ? 'Start' : pathStep.chestNumber} | Fuel Consum: {formatFuelAsMath(pathStep.fuelUsed)}
+                                                        </Typography>
+                                                    )}
+                                                </TableCell>
+                                            );
+                                        })}
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </StyledPaper>
+            )}
         </Container>
     );
 };
