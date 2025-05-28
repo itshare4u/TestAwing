@@ -19,9 +19,8 @@ import {
 } from './types';
 
 const formatFuelAsMath = (fuelUsed: number): string => {
-    if (fuelUsed === 0) return '0';
-    if (fuelUsed === 1) return '√1';
-    return `√${fuelUsed}`;
+    // Nếu là số nguyên (phần thập phân = 0) thì không hiển thị phần thập phân
+    return Number.isInteger(fuelUsed) ? fuelUsed.toString() : fuelUsed.toFixed(5);
 };
 
 const App: React.FC = () => {
@@ -279,13 +278,13 @@ const App: React.FC = () => {
     };
 
     return (
-        <Container maxWidth="lg" sx={{py: 4}}>
+        <Container maxWidth="lg" sx={{py: 2}}>
             <Typography variant="h3" component="h1" gutterBottom align="center" color="primary">
                 🏴‍☠️ Treasure Hunt Solver
             </Typography>
 
             <Box sx={{display: 'flex', gap: 3, flexDirection: {xs: 'column', md: 'row'}}}>
-                <Box sx={{flex: 1}}>
+                <Box sx={{flex: '0 0 50%'}}>
                     {/* Parameter Input */}
                     <ParameterInput 
                         n={n}
@@ -325,6 +324,7 @@ const App: React.FC = () => {
                     <ResultDisplay 
                         result={result}
                         error=""
+                        loading={loading}
                     />
                 </Box>
 

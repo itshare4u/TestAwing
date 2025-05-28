@@ -95,7 +95,7 @@ const History: React.FC<HistoryProps> = ({
                                             <TableCell>{item.n}×{item.m}</TableCell>
                                             <TableCell>{item.p}</TableCell>
                                             <TableCell sx={{fontWeight: 'bold', color: 'primary.main'}}>
-                                                {item.minFuel}
+                                                {Number.isInteger(item.minFuel) ? item.minFuel : item.minFuel.toFixed(5)}
                                             </TableCell>
                                             <TableCell>
                                                 {new Date(item.createdAt).toLocaleString()}

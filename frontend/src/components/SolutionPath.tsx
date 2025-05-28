@@ -72,7 +72,14 @@ const SolutionPath: React.FC<SolutionPathProps> = ({
                 Solution Path
             </Typography>
 
-            <TableContainer component={Paper} variant="outlined">
+            <TableContainer 
+                component={Paper} 
+                variant="outlined" 
+                sx={{ 
+                    maxHeight: 500,
+                    overflowY: 'auto'
+                }}
+            >
                 <Table size="small">
                     <TableBody>
                         {Array.from({length: n}, (_, i) => (
@@ -129,7 +136,7 @@ const SolutionPath: React.FC<SolutionPathProps> = ({
                                                     >
                                                         {pathStep.chestNumber === 0 
                                                             ? 'Start Position'
-                                                            : `Step ${pathStep.chestNumber} | Fuel Used: ${formatFuelAsMath(pathStep.fuelUsed)}`
+                                                            : `Step ${pathStep.chestNumber} (Cumulative Fuel: ${formatFuelAsMath(pathStep.cumulativeFuel)})`
                                                         }
                                                     </Typography>
                                                 )}
