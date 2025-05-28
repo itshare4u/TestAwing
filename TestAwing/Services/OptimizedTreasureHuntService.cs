@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Threading.Tasks;
+using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using TestAwing.Models;
 
@@ -7,10 +9,20 @@ namespace TestAwing.Services;
 public class OptimizedTreasureHuntService
 {
     private readonly TreasureHuntContext _context;
+    private readonly int _maxDegreeOfParallelism;
 
     public OptimizedTreasureHuntService(TreasureHuntContext context)
     {
         _context = context;
+        // Set default parallelism to number of processors or a reasonable default
+        _maxDegreeOfParallelism = Environment.ProcessorCount;
+    }
+
+    // Constructor that allows configuring the degree of parallelism
+    public OptimizedTreasureHuntService(TreasureHuntContext context, int maxDegreeOfParallelism)
+    {
+        _context = context;
+        _maxDegreeOfParallelism = maxDegreeOfParallelism > 0 ? maxDegreeOfParallelism : Environment.ProcessorCount;
     }
 
     public async Task<TreasureHuntResponse> SolveTreasureHunt(TreasureHuntRequest request)
@@ -220,8 +232,8 @@ public class OptimizedTreasureHuntService
     }
 
     /// <summary>
-    /// Full Held-Karp dynamic programming solution for small p (≤ 10)
-    /// Time complexity: O(2^p * p^2 * max_positions_per_chest)
+    /// Full Held-Karp dynamic programming solution for small p (≤ 10) with multi-threading
+    /// Time complexity: O(2^p * p^2 * max_positions_per_chest) but with parallel execution
     /// </summary>
     private TreasureHuntResponse CalculateOptimalPathDP(List<List<(int row, int col)>> chestOptions, int p, int[][] matrix)
     {
@@ -255,36 +267,86 @@ public class OptimizedTreasureHuntService
             }
         }
 
-        // Fill the DP table using the recurrence relation:
-        // dp[i+1][j] = min(dp[i][k] + cost(positionOfChest[i][k] → positionOfChest[i+1][j])) for all k
+        // Fill the DP table using parallel processing for each chest level
+        // We cannot parallelize at the chest level (i) due to dependencies
+        // But we can parallelize at the position level (j) for each chest
         for (int i = 0; i < p - 1; i++) { // For each chest (except the last one)
-            for (int j = 0; j < positionCounts[i+1]; j++) { // For each position of the next chest
-                var nextPos = chestOptions[i+1][j];
-                
-                for (int k = 0; k < positionCounts[i]; k++) { // For each position of the current chest
-                    var prevPos = chestOptions[i][k];
-                    var cost = dp[i][k] + CalculateDistance(prevPos, nextPos);
-                    
-                    if (cost < dp[i+1][j]) {
-                        dp[i+1][j] = cost;
-                        parent[i+1][j] = (i, k); // Store the best previous chest and position
+            // Use a parallel for loop to process all positions of the next chest in parallel
+            Parallel.ForEach(
+                Partitioner.Create(0, positionCounts[i+1]), 
+                new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism },
+                range => {
+                    for (int j = range.Item1; j < range.Item2; j++) { // For each position of the next chest
+                        var nextPos = chestOptions[i+1][j];
+                        
+                        // Calculate minimum cost from previous chest positions
+                        double minCost = double.MaxValue;
+                        int bestPrevPos = -1;
+                        
+                        for (int k = 0; k < positionCounts[i]; k++) { // For each position of the current chest
+                            var prevPos = chestOptions[i][k];
+                            var cost = dp[i][k] + CalculateDistance(prevPos, nextPos);
+                            
+                            if (cost < minCost) {
+                                minCost = cost;
+                                bestPrevPos = k;
+                            }
+                        }
+                        
+                        // Update dp and parent tables
+                        dp[i+1][j] = minCost;
+                        parent[i+1][j] = (i, bestPrevPos);
                     }
+                }
+            );
+        }
+
+        // Find the position of the last chest that gives minimum fuel
+        // This can be parallelized as well
+        var minFuelResults = new ConcurrentBag<(double fuel, int pos)>();
+        
+        Parallel.ForEach(
+            Partitioner.Create(0, positionCounts[p-1]),
+            new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism },
+            range => {
+                double localMinFuel = double.MaxValue;
+                int localBestPos = -1;
+                
+                for (int j = range.Item1; j < range.Item2; j++) {
+                    if (dp[p-1][j] < localMinFuel) {
+                        localMinFuel = dp[p-1][j];
+                        localBestPos = j;
+                    }
+                }
+                
+                if (localBestPos != -1) {
+                    minFuelResults.Add((localMinFuel, localBestPos));
+                }
+            }
+        );
+        
+        // Find global minimum from parallel results
+        var minFuel = double.MaxValue;
+        var lastChestBestPos = 0;
+        
+        foreach (var (fuel, pos) in minFuelResults) {
+            if (fuel < minFuel) {
+                minFuel = fuel;
+                lastChestBestPos = pos;
+            }
+        }
+        
+        // If no results were found (unlikely but possible), do a sequential scan
+        if (minFuelResults.IsEmpty && positionCounts[p-1] > 0) {
+            for (int j = 0; j < positionCounts[p-1]; j++) {
+                if (dp[p-1][j] < minFuel) {
+                    minFuel = dp[p-1][j];
+                    lastChestBestPos = j;
                 }
             }
         }
 
-        // Find the position of the last chest that gives minimum fuel
-        var minFuel = double.MaxValue;
-        var lastChestBestPos = 0;
-        
-        for (int j = 0; j < positionCounts[p-1]; j++) {
-            if (dp[p-1][j] < minFuel) {
-                minFuel = dp[p-1][j];
-                lastChestBestPos = j;
-            }
-        }
-
-        // Reconstruct the path
+        // Reconstruct the path - this is sequential as it depends on previous steps
         var path = new List<PathStep>();
         
         // Add start position
@@ -342,14 +404,12 @@ public class OptimizedTreasureHuntService
     }
 
     /// <summary>
-    /// Heuristic approach for larger p values
+    /// Heuristic approach for larger p values with parallel processing
     /// Uses greedy selection with local optimization
     /// </summary>
     private TreasureHuntResponse CalculateOptimalPathHeuristic(List<List<(int row, int col)>> chestOptions, int p, int[][] matrix)
     {
         var startPos = (row: 0, col: 0);
-        var currentPos = startPos;
-        var totalFuel = 0.0;
         var path = new List<PathStep>();
         
         // Always start with the start position
@@ -362,25 +422,39 @@ public class OptimizedTreasureHuntService
             CumulativeFuel = 0
         });
         
+        // Current position starts at the origin
+        var currentPos = startPos;
+        var totalFuel = 0.0;
+        
         // Visit chests in order 1, 2, 3, ..., p
         // This ensures we follow the required sequence and show chronological path
         for (int chest = 1; chest <= p; chest++)
         {
             var positions = chestOptions[chest - 1];
             
-            // For each chest type, try all positions and pick the best
-            double minDistance = double.MaxValue;
+            // For each chest type, try all positions in parallel and pick the best
+            var results = new ConcurrentBag<(double distance, int row, int col)>();
+            
+            Parallel.ForEach(
+                positions,
+                new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism },
+                pos => {
+                    var distance = CalculateDistance(currentPos, pos);
+                    results.Add((distance, pos.row, pos.col));
+                }
+            );
+            
+            // Find the best position (minimum distance)
+            var minDistance = double.MaxValue;
             (int bestRow, int bestCol) = (0, 0);
             
-            foreach (var (targetRow, targetCol) in positions)
+            foreach (var (distance, row, col) in results)
             {
-                var distance = CalculateDistance(currentPos, (targetRow, targetCol));
-                
                 if (distance < minDistance)
                 {
                     minDistance = distance;
-                    bestRow = targetRow;
-                    bestCol = targetCol;
+                    bestRow = row;
+                    bestCol = col;
                 }
             }
             

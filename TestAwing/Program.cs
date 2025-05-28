@@ -39,6 +39,7 @@ switch (databaseProvider.ToLower())
 }
 
 builder.Services.AddScoped<OptimizedTreasureHuntService>();
+builder.Services.AddScoped<ParallelTreasureHuntService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowLocalhost",
@@ -156,6 +157,24 @@ app.MapGet("/api/generate-random-data", (int? n, int? m, int? p, OptimizedTreasu
 
         var randomData = service.GenerateRandomTestData(rows, cols, maxChest);
         return Results.Ok(randomData);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+});
+
+// Parallel implementation endpoint
+app.MapPost("/api/treasure-hunt/parallel", async (TreasureHuntRequest request, ParallelTreasureHuntService service) =>
+{
+    try
+    {
+        var result = await service.SolveTreasureHunt(request);
+        return Results.Ok(result);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
     }
     catch (Exception ex)
     {
