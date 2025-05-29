@@ -1,6 +1,6 @@
 ﻿
 # ==========================================
-# Build stage - SDK image for building
+# Backend build stage - SDK image for building
 # ==========================================
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
