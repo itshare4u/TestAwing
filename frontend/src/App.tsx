@@ -15,7 +15,11 @@ import {
     TreasureHuntResult,
     TreasureHuntResultWithPath,
     PaginatedResponse,
-    PathStep
+    PathStep,
+    AsyncSolveRequest,
+    AsyncSolveResponse,
+    SolveStatusResponse,
+    SolveStatus
 } from './types';
 
 const formatFuelAsMath = (fuelUsed: number): string => {
@@ -42,6 +46,12 @@ const App: React.FC = () => {
     // UI state
     const [error, setError] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
+
+    // Async solve state
+    const [currentSolveId, setCurrentSolveId] = useState<number | null>(null);
+    const [solveStatus, setSolveStatus] = useState<SolveStatus>(SolveStatus.Pending);
+    const [isPolling, setIsPolling] = useState<boolean>(false);
+    const [abortController, setAbortController] = useState<AbortController | null>(null);
 
     // History state
     const [history, setHistory] = useState<TreasureHuntResult[]>([]);
@@ -317,7 +327,101 @@ const App: React.FC = () => {
         }
     }, [historyPage, itemsPerPage]);
 
-    // Solve handler
+    // Async solve functions
+    const startAsyncSolve = async (): Promise<number> => {
+        const numMatrix = matrix.map(row => row.map(cell => Number(cell)));
+        const request: AsyncSolveRequest = {
+            treasureHuntRequest: {
+                n: currentN,
+                m: currentM,
+                p: currentP,
+                matrix: numMatrix
+            }
+        };
+
+        const response = await axios.post<AsyncSolveResponse>('http://localhost:5001/api/treasure-hunt/solve-async', request);
+        return response.data.solveId;
+    };
+
+    const checkSolveStatus = async (solveId: number): Promise<SolveStatusResponse> => {
+        const response = await axios.get<SolveStatusResponse>(`http://localhost:5001/api/treasure-hunt/solve-status/${solveId}`);
+        return response.data;
+    };
+
+    const cancelSolve = async (solveId: number): Promise<boolean> => {
+        try {
+            await axios.post(`http://localhost:5001/api/treasure-hunt/cancel-solve/${solveId}`);
+            return true;
+        } catch (err) {
+            console.error('Failed to cancel solve:', err);
+            return false;
+        }
+    };
+
+    const pollSolveStatus = useCallback(async (solveId: number): Promise<void> => {
+        setIsPolling(true);
+        
+        const pollInterval = setInterval(async () => {
+            try {
+                const status = await checkSolveStatus(solveId);
+                setSolveStatus(status.status);
+
+                if (status.status === SolveStatus.Completed) {
+                    clearInterval(pollInterval);
+                    setIsPolling(false);
+                    setLoading(false);
+                    setCurrentSolveId(null);
+                    
+                    if (status.result) {
+                        setResult(status.result.minFuel);
+                        setCurrentPath(status.result.path || []);
+                        setSelectedHistoryItem(null);
+                        setHistoryPage(1);
+                        await fetchHistory();
+                    }
+                } else if (status.status === SolveStatus.Cancelled || status.status === SolveStatus.Failed) {
+                    clearInterval(pollInterval);
+                    setIsPolling(false);
+                    setLoading(false);
+                    setCurrentSolveId(null);
+                    
+                    if (status.status === SolveStatus.Failed) {
+                        setError(status.errorMessage || 'Solve operation failed');
+                    } else {
+                        setError('Solve operation was cancelled');
+                    }
+                }
+            } catch (err) {
+                clearInterval(pollInterval);
+                setIsPolling(false);
+                setLoading(false);
+                setCurrentSolveId(null);
+                setError('Failed to check solve status');
+            }
+        }, 1000); // Poll every second
+
+        // Store the interval ID so it can be cleared later
+        // This will be cleaned up when the component unmounts or solve completes
+    }, [fetchHistory]);
+
+    // Handle cancellation
+    const handleCancelSolve = async () => {
+        if (currentSolveId) {
+            setLoading(false);
+            setSolveStatus(SolveStatus.Cancelled);
+            await cancelSolve(currentSolveId);
+            setCurrentSolveId(null);
+            setIsPolling(false);
+            
+            // Cancel the abort controller if exists
+            if (abortController) {
+                abortController.abort();
+                setAbortController(null);
+            }
+        }
+    };
+
+    // Solve handler with async functionality
     const handleSolve = async () => {
         setError('');
         setResult(null);
@@ -327,25 +431,26 @@ const App: React.FC = () => {
         }
 
         setLoading(true);
-        try {
-            const numMatrix = matrix.map(row => row.map(cell => Number(cell)));
-            const request: TreasureHuntRequest = {
-                n: currentN,
-                m: currentM,
-                p: currentP,
-                matrix: numMatrix
-            };
+        setSolveStatus(SolveStatus.Pending);
+        
+        // Create abort controller for this solve operation
+        const controller = new AbortController();
+        setAbortController(controller);
 
-            const response = await axios.post('http://localhost:5001/api/treasure-hunt/parallel', request);
-            setResult(response.data.minFuel);
-            setCurrentPath(response.data.path || []);
-            setSelectedHistoryItem(null);
-            setHistoryPage(1);
-            await fetchHistory();
+        try {
+            // Start the async solve
+            const solveId = await startAsyncSolve();
+            setCurrentSolveId(solveId);
+            setSolveStatus(SolveStatus.InProgress);
+
+            // Start polling for status
+            await pollSolveStatus(solveId);
+            
         } catch (err: any) {
-            setError(err.response?.data?.message || 'An error occurred while solving the treasure hunt');
-        } finally {
             setLoading(false);
+            setCurrentSolveId(null);
+            setAbortController(null);
+            setError(err.response?.data?.message || 'An error occurred while solving the treasure hunt');
         }
     };
 
@@ -363,6 +468,7 @@ const App: React.FC = () => {
                         m={m}
                         p={p}
                         loading={loading}
+                        solveStatus={solveStatus}
                         onNChange={handleNChange}
                         onMChange={handleMChange}
                         onPChange={handlePChange}
@@ -371,7 +477,8 @@ const App: React.FC = () => {
                         onLoadExample={loadExample}
                         onFileUpload={handleFileUpload}
                         onExportMatrix={handleExportMatrix}
-                        onSolve={handleSolve}          
+                        onSolve={handleSolve}
+                        onCancelSolve={handleCancelSolve}
                     />
 
                     {/* Error Display */}
@@ -397,6 +504,8 @@ const App: React.FC = () => {
                         result={result}
                         error=""
                         loading={loading}
+                        solveStatus={solveStatus}
+                        currentSolveId={currentSolveId}
                     />
                 </Box>
 

@@ -2,6 +2,15 @@ using System.ComponentModel.DataAnnotations;
 
 namespace TestAwing.Models;
 
+public enum SolveStatus
+{
+    Pending = 0,
+    InProgress = 1,
+    Completed = 2,
+    Cancelled = 3,
+    Failed = 4
+}
+
 public class TreasureHuntRequest
 {
     [Required]
@@ -30,6 +39,10 @@ public class TreasureHuntResult
     public string PathJson { get; set; } = string.Empty; // Store the path as JSON
     public double MinFuel { get; set; }
     public DateTime CreatedAt { get; set; }
+    public SolveStatus Status { get; set; } = SolveStatus.Pending;
+    public DateTime? StartedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public string? ErrorMessage { get; set; }
 }
 
 public class PathStep
@@ -78,4 +91,28 @@ public class PaginatedResponse<T>
     public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
     public bool HasNextPage => Page < TotalPages;
     public bool HasPreviousPage => Page > 1;
+}
+
+public class AsyncSolveRequest
+{
+    [Required]
+    public TreasureHuntRequest TreasureHuntRequest { get; set; } = new();
+}
+
+public class AsyncSolveResponse
+{
+    public int SolveId { get; set; }
+    public SolveStatus Status { get; set; }
+    public string Message { get; set; } = string.Empty;
+}
+
+public class SolveStatusResponse
+{
+    public int SolveId { get; set; }
+    public SolveStatus Status { get; set; }
+    public TreasureHuntResponse? Result { get; set; }
+    public string? ErrorMessage { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
 }

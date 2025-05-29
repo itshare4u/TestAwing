@@ -40,6 +40,7 @@ switch (databaseProvider.ToLower())
 
 builder.Services.AddScoped<OptimizedTreasureHuntService>();
 builder.Services.AddScoped<ParallelTreasureHuntService>();
+builder.Services.AddScoped<AsyncTreasureHuntService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowLocalhost",
@@ -86,6 +87,58 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowLocalhost");
+
+// Async Treasure Hunt API endpoints
+app.MapPost("/api/treasure-hunt/async", async (AsyncSolveRequest request, AsyncTreasureHuntService asyncService) =>
+{
+    try
+    {
+        var result = await asyncService.StartSolveAsync(request.TreasureHuntRequest);
+        return Results.Ok(result);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+});
+
+app.MapGet("/api/treasure-hunt/async/{solveId}/status", async (int solveId, AsyncTreasureHuntService asyncService) =>
+{
+    try
+    {
+        var result = await asyncService.GetSolveStatusAsync(solveId);
+        if (result == null)
+        {
+            return Results.NotFound(new { message = "Solve operation not found" });
+        }
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+});
+
+app.MapPost("/api/treasure-hunt/async/{solveId}/cancel", async (int solveId, AsyncTreasureHuntService asyncService) =>
+{
+    try
+    {
+        var success = await asyncService.CancelSolveAsync(solveId);
+        if (success)
+        {
+            return Results.Ok(new { message = "Solve operation cancelled successfully" });
+        }
+        return Results.BadRequest(new { message = "Could not cancel solve operation. It may have already completed or been cancelled." });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+});
 
 // Treasure Hunt API endpoints
 app.MapPost("/api/treasure-hunt", async (TreasureHuntRequest request, OptimizedTreasureHuntService service) =>
@@ -175,6 +228,61 @@ app.MapPost("/api/treasure-hunt/parallel", async (TreasureHuntRequest request, P
     catch (ArgumentException ex)
     {
         return Results.BadRequest(new { message = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+});
+
+// Async solve endpoints
+app.MapPost("/api/treasure-hunt/solve-async", async (AsyncSolveRequest request, AsyncTreasureHuntService service) =>
+{
+    try
+    {
+        var result = await service.StartSolveAsync(request.TreasureHuntRequest);
+        return Results.Ok(result);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+});
+
+app.MapGet("/api/treasure-hunt/solve-status/{id}", async (int id, AsyncTreasureHuntService service) =>
+{
+    try
+    {
+        var status = await service.GetSolveStatusAsync(id);
+        if (status == null)
+        {
+            return Results.NotFound(new { message = "Solve operation not found" });
+        }
+        return Results.Ok(status);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+});
+
+app.MapPost("/api/treasure-hunt/cancel-solve/{id}", async (int id, AsyncTreasureHuntService service) =>
+{
+    try
+    {
+        var success = await service.CancelSolveAsync(id);
+        if (success)
+        {
+            return Results.Ok(new { message = "Solve operation cancelled successfully" });
+        }
+        else
+        {
+            return Results.BadRequest(new { message = "Unable to cancel solve operation" });
+        }
     }
     catch (Exception ex)
     {

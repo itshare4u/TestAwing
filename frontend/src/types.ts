@@ -5,12 +5,26 @@ export interface TreasureHuntRequest {
     matrix: number[][];
 }
 
+export enum SolveStatus {
+    Pending = 0,
+    InProgress = 1,
+    Completed = 2,
+    Cancelled = 3,
+    Failed = 4
+}
+
 export interface PathStep {
     chestNumber: number;
     row: number;
     col: number;
     fuelUsed: number;
     cumulativeFuel: number;
+}
+
+export interface TreasureHuntResponse {
+    minFuel: number;
+    id: number;
+    path: PathStep[];
 }
 
 export interface TreasureHuntResult {
@@ -21,6 +35,30 @@ export interface TreasureHuntResult {
     matrixJson: string;
     minFuel: number;
     createdAt: string;
+    status: SolveStatus;
+    startedAt?: string;
+    completedAt?: string;
+    errorMessage?: string;
+}
+
+export interface AsyncSolveRequest {
+    treasureHuntRequest: TreasureHuntRequest;
+}
+
+export interface AsyncSolveResponse {
+    solveId: number;
+    status: SolveStatus;
+    message: string;
+}
+
+export interface SolveStatusResponse {
+    solveId: number;
+    status: SolveStatus;
+    result?: TreasureHuntResponse;
+    errorMessage?: string;
+    createdAt: string;
+    startedAt?: string;
+    completedAt?: string;
 }
 
 export interface TreasureHuntResultWithPath {

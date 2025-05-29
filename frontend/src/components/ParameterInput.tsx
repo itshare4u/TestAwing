@@ -1,12 +1,14 @@
 import React from 'react';
 import { Box, TextField, Button, Typography } from '@mui/material';
-import { Shuffle, FileUpload, FileDownload } from '@mui/icons-material';
+import { Shuffle, FileUpload, FileDownload, Cancel } from '@mui/icons-material';
+import { SolveStatus } from '../types';
 
 interface ParameterInputProps {
     n: number;
     m: number;
     p: number;
     loading: boolean;
+    solveStatus?: SolveStatus;
     onNChange: (value: number) => void;
     onMChange: (value: number) => void;
     onPChange: (value: number) => void;
@@ -16,6 +18,7 @@ interface ParameterInputProps {
     onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
     onExportMatrix: () => void;
     onSolve: () => void;
+    onCancelSolve?: () => void;
 }
 
 const ParameterInput: React.FC<ParameterInputProps> = ({
@@ -23,6 +26,7 @@ const ParameterInput: React.FC<ParameterInputProps> = ({
     m,
     p,
     loading,
+    solveStatus = SolveStatus.Pending,
     onNChange,
     onMChange,
     onPChange,
@@ -31,7 +35,8 @@ const ParameterInput: React.FC<ParameterInputProps> = ({
     onLoadExample,
     onFileUpload,
     onExportMatrix,
-    onSolve
+    onSolve,
+    onCancelSolve
 }) => {
     return (
         <>
@@ -168,15 +173,41 @@ const ParameterInput: React.FC<ParameterInputProps> = ({
                     >
                         Export Matrix
                     </Button>
-                    <Button
-                        variant="contained"
-                        size="large"
-                        onClick={onSolve}
-                        disabled={loading}
-                        sx={{minWidth: '200px'}}
-                    >
-                        {loading ? 'Solving...' : 'Solve Treasure Hunt'}
-                    </Button>
+                    {loading && onCancelSolve ? (
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                                variant="contained"
+                                size="large"
+                                disabled={true}
+                                sx={{minWidth: '150px'}}
+                            >
+                                {solveStatus === SolveStatus.Pending && 'Starting...'}
+                                {solveStatus === SolveStatus.InProgress && 'Solving...'}
+                                {solveStatus === SolveStatus.Completed && 'Completed'}
+                                {solveStatus === SolveStatus.Cancelled && 'Cancelled'}
+                                {solveStatus === SolveStatus.Failed && 'Failed'}
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                size="large"
+                                startIcon={<Cancel />}
+                                onClick={onCancelSolve}
+                                color="error"
+                            >
+                                Cancel
+                            </Button>
+                        </Box>
+                    ) : (
+                        <Button
+                            variant="contained"
+                            size="large"
+                            onClick={onSolve}
+                            disabled={loading}
+                            sx={{minWidth: '200px'}}
+                        >
+                            {loading ? 'Solving...' : 'Solve Treasure Hunt'}
+                        </Button>
+                    )}
                 </Box>
             </Box>
 

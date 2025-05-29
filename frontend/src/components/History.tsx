@@ -10,9 +10,10 @@ import {
     TableHead,
     TableRow,
     Divider,
-    Pagination
+    Pagination,
+    Chip
 } from '@mui/material';
-import { TreasureHuntResult } from '../types';
+import { TreasureHuntResult, SolveStatus } from '../types';
 
 interface HistoryProps {
     history: TreasureHuntResult[];
@@ -22,6 +23,24 @@ interface HistoryProps {
     onHistoryPageChange: (page: number) => void;
     onHistoryItemClick: (item: TreasureHuntResult) => void;
 }
+
+// Helper function to get status display information
+const getStatusInfo = (status: SolveStatus) => {
+    switch (status) {
+        case SolveStatus.Pending:
+            return { label: 'Pending', color: 'warning' as const };
+        case SolveStatus.InProgress:
+            return { label: 'In Progress', color: 'info' as const };
+        case SolveStatus.Completed:
+            return { label: 'Completed', color: 'success' as const };
+        case SolveStatus.Cancelled:
+            return { label: 'Cancelled', color: 'default' as const };
+        case SolveStatus.Failed:
+            return { label: 'Failed', color: 'error' as const };
+        default:
+            return { label: 'Unknown', color: 'default' as const };
+    }
+};
 
 const History: React.FC<HistoryProps> = ({
     history,
@@ -80,28 +99,43 @@ const History: React.FC<HistoryProps> = ({
                                     <TableRow>
                                         <TableCell>Matrix Size</TableCell>
                                         <TableCell>Max Chest (p)</TableCell>
+                                        <TableCell>Status</TableCell>
                                         <TableCell>Min Fuel</TableCell>
                                         <TableCell>Created At</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {history.map((item) => (
-                                        <TableRow 
-                                            key={item.id} 
-                                            hover 
-                                            onClick={() => onHistoryItemClick(item)}
-                                            sx={{cursor: 'pointer'}}
-                                        >
-                                            <TableCell>{item.n}×{item.m}</TableCell>
-                                            <TableCell>{item.p}</TableCell>
-                                            <TableCell sx={{fontWeight: 'bold', color: 'primary.main'}}>
-                                                {Number.isInteger(item.minFuel) ? item.minFuel : item.minFuel.toFixed(5)}
-                                            </TableCell>
-                                            <TableCell>
-                                                {new Date(item.createdAt).toLocaleString()}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {history.map((item) => {
+                                        const statusInfo = getStatusInfo(item.status);
+                                        return (
+                                            <TableRow 
+                                                key={item.id} 
+                                                hover 
+                                                onClick={() => onHistoryItemClick(item)}
+                                                sx={{cursor: 'pointer'}}
+                                            >
+                                                <TableCell>{item.n}×{item.m}</TableCell>
+                                                <TableCell>{item.p}</TableCell>
+                                                <TableCell>
+                                                    <Chip 
+                                                        label={statusInfo.label} 
+                                                        color={statusInfo.color}
+                                                        size="small"
+                                                        variant="outlined"
+                                                    />
+                                                </TableCell>
+                                                <TableCell sx={{fontWeight: 'bold', color: 'primary.main'}}>
+                                                    {item.status === SolveStatus.Completed 
+                                                        ? (Number.isInteger(item.minFuel) ? item.minFuel : item.minFuel.toFixed(5))
+                                                        : (item.status === SolveStatus.Failed ? (item.errorMessage || 'Failed') : '—')
+                                                    }
+                                                </TableCell>
+                                                <TableCell>
+                                                    {new Date(item.createdAt).toLocaleString()}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
                         </TableContainer>
