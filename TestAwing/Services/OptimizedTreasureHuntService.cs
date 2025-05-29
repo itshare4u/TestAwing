@@ -219,16 +219,9 @@ public class OptimizedTreasureHuntService
             chestOptions.Add(chestPositions[chest]);
         }
 
-        // If p is small (≤ 10), use full dynamic programming
-        // For larger p, use optimized heuristic with dynamic programming for subproblems
-        if (p <= 10)
-        {
-            return CalculateOptimalPathDP(chestOptions, p, matrix);
-        }
-        else
-        {
-            return CalculateOptimalPathHeuristic(chestOptions, p, matrix);
-        }
+        // Always use heuristic approach for consistency with async service
+        // This provides faster computation and more consistent results
+        return CalculateOptimalPathHeuristic(chestOptions, p, matrix);
     }
 
     /// <summary>

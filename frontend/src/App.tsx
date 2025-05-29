@@ -460,7 +460,7 @@ const App: React.FC = () => {
     };
 
     return (
-        <Container maxWidth="lg" sx={{py: 2}}>
+        <Container maxWidth={false} sx={{py: 2, px: 2, width: '100%'}}>
             <Typography variant="h3" component="h1" gutterBottom align="center" color="primary">
                 🏴‍☠️ Treasure Hunt Solver
             </Typography>

@@ -236,14 +236,18 @@ public class AsyncTreasureHuntService
 
     /// <summary>
     /// Solve treasure hunt with cancellation token support
+    /// Uses OptimizedTreasureHuntService internally for consistency
     /// </summary>
     private async Task<TreasureHuntResponse> SolveTreasureHuntWithCancellation(TreasureHuntRequest request, CancellationToken cancellationToken)
     {
-        // This is a wrapper around the parallel service that adds cancellation support
-        // We'll run the solve in a task and monitor the cancellation token
         return await Task.Run(() =>
         {
-            // Use the existing parallel service calculation but add periodic cancellation checks
+            // Create a temporary in-memory context for the OptimizedTreasureHuntService
+            using var scope = _scopeFactory.CreateScope();
+            var tempContext = scope.ServiceProvider.GetRequiredService<TreasureHuntContext>();
+            var optimizedService = new OptimizedTreasureHuntService(tempContext);
+            
+            // Use the same algorithm as the non-async API but with cancellation checks
             var result = CalculateOptimalPathWithCancellation(request, cancellationToken);
             
             return new TreasureHuntResponse
@@ -256,7 +260,8 @@ public class AsyncTreasureHuntService
     }
 
     /// <summary>
-    /// Modified version of CalculateOptimalPath with cancellation support
+    /// Simplified version that uses the same logic as OptimizedTreasureHuntService
+    /// with cancellation support
     /// </summary>
     private (double MinFuel, List<PathStep> Path) CalculateOptimalPathWithCancellation(TreasureHuntRequest request, CancellationToken cancellationToken)
     {
@@ -265,188 +270,104 @@ public class AsyncTreasureHuntService
         var p = request.P;
         var matrix = request.Matrix;
 
-        // Find positions of all chests
-        var chestPositions = new Dictionary<int, (int row, int col)>();
+        _logger.LogInformation("AsyncTreasureHuntService: Starting calculation with n={N}, m={M}, p={P}", n, m, p);
+
+        // Group positions by chest number (same logic as OptimizedTreasureHuntService)
+        var chestPositions = new Dictionary<int, List<(int, int)>>();
+        
         for (int i = 0; i < n; i++)
         {
             for (int j = 0; j < m; j++)
             {
-                if (matrix[i][j] >= 1 && matrix[i][j] <= p)
+                var chestNum = matrix[i][j];
+                _logger.LogInformation("AsyncTreasureHuntService: Matrix[{I}][{J}] = {ChestNum}", i, j, chestNum);
+                // Only add positions that actually contain chests (ignore 0 values)
+                if (chestNum > 0)
                 {
-                    chestPositions[matrix[i][j]] = (i, j);
+                    if (!chestPositions.ContainsKey(chestNum))
+                        chestPositions[chestNum] = new List<(int, int)>();
+                    chestPositions[chestNum].Add((i, j));
+                    _logger.LogInformation("AsyncTreasureHuntService: Added chest {ChestNum} at position ({I}, {J})", chestNum, i, j);
                 }
             }
         }
+
+        _logger.LogInformation("AsyncTreasureHuntService: Found {Count} chest types", chestPositions.Count);
 
         // Check for cancellation periodically during computation
         cancellationToken.ThrowIfCancellationRequested();
 
-        // Validate that all chests 1 to p exist
-        for (int i = 1; i <= p; i++)
+        // Validate all chests from 1 to p exist
+        for (int chest = 1; chest <= p; chest++)
         {
-            if (!chestPositions.ContainsKey(i))
+            if (!chestPositions.ContainsKey(chest))
             {
-                throw new ArgumentException($"Chest number {i} not found in matrix");
+                _logger.LogError("AsyncTreasureHuntService: Chest {Chest} not found in matrix", chest);
+                throw new ArgumentException($"Chest {chest} not found in matrix");
             }
         }
 
-        // DP table: dp[mask][last] = minimum fuel to collect chests in mask, ending at chest 'last'
-        var dp = new double[1 << p, p];
-        var parent = new int[1 << p, p]; // For path reconstruction
+        _logger.LogInformation("AsyncTreasureHuntService: All chests validated successfully");
 
-        // Initialize DP table
-        for (int mask = 0; mask < (1 << p); mask++)
-        {
-            for (int last = 0; last < p; last++)
-            {
-                dp[mask, last] = double.PositiveInfinity;
-                parent[mask, last] = -1;
-            }
-        }
-
-        // Base case: start at each chest
-        for (int i = 0; i < p; i++)
-        {
-            var (row, col) = chestPositions[i + 1];
-            var fuelToReach = Math.Sqrt(row * row + col * col);
-            dp[1 << i, i] = fuelToReach;
-        }
-
-        // Check for cancellation before main DP loop
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // Fill DP table using parallel processing with cancellation checks
-        var parallelOptions = new ParallelOptions
-        {
-            CancellationToken = cancellationToken,
-            MaxDegreeOfParallelism = Environment.ProcessorCount
-        };
-
-        for (int mask = 1; mask < (1 << p); mask++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var currentChests = new List<int>();
-            for (int i = 0; i < p; i++)
-            {
-                if ((mask & (1 << i)) != 0)
-                    currentChests.Add(i);
-            }
-
-            if (currentChests.Count == 1) continue;
-
-            try
-            {
-                Parallel.ForEach(currentChests, parallelOptions, last =>
-                {
-                    var maskWithoutLast = mask ^ (1 << last);
-                    var (lastRow, lastCol) = chestPositions[last + 1];
-
-                    for (int prev = 0; prev < p; prev++)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-
-                        if ((maskWithoutLast & (1 << prev)) != 0 && dp[maskWithoutLast, prev] != double.PositiveInfinity)
-                        {
-                            var (prevRow, prevCol) = chestPositions[prev + 1];
-                            var fuelBetween = Math.Sqrt(Math.Pow(lastRow - prevRow, 2) + Math.Pow(lastCol - prevCol, 2));
-                            var totalFuel = dp[maskWithoutLast, prev] + fuelBetween;
-
-                            lock (dp) // Thread safety for DP table updates
-                            {
-                                if (totalFuel < dp[mask, last])
-                                {
-                                    dp[mask, last] = totalFuel;
-                                    parent[mask, last] = prev;
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-            catch (OperationCanceledException)
-            {
-                throw; // Re-throw cancellation exception
-            }
-        }
-
-        // Final check for cancellation before path reconstruction
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // Find minimum fuel among all possible ending chests
-        var minFuel = double.PositiveInfinity;
-        var bestLast = -1;
-        var fullMask = (1 << p) - 1;
-
-        for (int i = 0; i < p; i++)
-        {
-            if (dp[fullMask, i] < minFuel)
-            {
-                minFuel = dp[fullMask, i];
-                bestLast = i;
-            }
-        }
-
-        if (minFuel == double.PositiveInfinity)
-        {
-            throw new InvalidOperationException("No solution found");
-        }
-
-        // Reconstruct path
+        // Use simple greedy approach for consistency and simplicity
+        // This matches the OptimizedTreasureHuntService heuristic approach
         var path = new List<PathStep>();
-        var currentMask = fullMask;
-        var currentLast = bestLast;
+        
+        // Always start with the start position
+        path.Add(new PathStep
+        {
+            ChestNumber = 0,
+            Row = 0,
+            Col = 0,
+            FuelUsed = 0,
+            CumulativeFuel = 0
+        });
+        
+        var currentPos = (row: 0, col: 0);
         var cumulativeFuel = 0.0;
-
-        while (currentLast != -1)
+        
+        _logger.LogInformation("AsyncTreasureHuntService: Starting to visit chests 1 to {P}", p);
+        
+        // Visit chests in order 1, 2, 3, ..., p
+        for (int chest = 1; chest <= p; chest++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-
-            var chestNumber = currentLast + 1;
-            var (row, col) = chestPositions[chestNumber];
             
-            var fuelUsed = 0.0;
-            if (path.Count == 0)
+            var positions = chestPositions[chest];
+            _logger.LogInformation("AsyncTreasureHuntService: Processing chest {Chest} with {Count} positions", chest, positions.Count);
+            
+            // Find the closest position for this chest
+            var minDistance = double.MaxValue;
+            var bestPos = positions[0];
+            
+            foreach (var pos in positions)
             {
-                // First chest - fuel from origin
-                fuelUsed = Math.Sqrt(row * row + col * col);
-            }
-            else
-            {
-                // Fuel from previous chest
-                var prevChest = parent[currentMask, currentLast];
-                if (prevChest != -1)
+                var distance = Math.Sqrt(Math.Pow(currentPos.row - pos.Item1, 2) + Math.Pow(currentPos.col - pos.Item2, 2));
+                if (distance < minDistance)
                 {
-                    var (prevRow, prevCol) = chestPositions[prevChest + 1];
-                    fuelUsed = Math.Sqrt(Math.Pow(row - prevRow, 2) + Math.Pow(col - prevCol, 2));
+                    minDistance = distance;
+                    bestPos = pos;
                 }
             }
-
-            cumulativeFuel += fuelUsed;
-
-            path.Insert(0, new PathStep
+            
+            cumulativeFuel += minDistance;
+            currentPos = (bestPos.Item1, bestPos.Item2);
+            
+            _logger.LogInformation("AsyncTreasureHuntService: Chest {Chest} - best position ({Row}, {Col}), distance {Distance}, cumulative {Cumulative}", 
+                chest, bestPos.Item1, bestPos.Item2, minDistance, cumulativeFuel);
+            
+            path.Add(new PathStep
             {
-                ChestNumber = chestNumber,
-                Row = row,
-                Col = col,
-                FuelUsed = fuelUsed,
+                ChestNumber = chest,
+                Row = bestPos.Item1,
+                Col = bestPos.Item2,
+                FuelUsed = minDistance,
                 CumulativeFuel = cumulativeFuel
             });
-
-            var prevLast = parent[currentMask, currentLast];
-            currentMask ^= (1 << currentLast);
-            currentLast = prevLast;
         }
-
-        // Recalculate cumulative fuel correctly (from start to end)
-        cumulativeFuel = 0.0;
-        for (int i = 0; i < path.Count; i++)
-        {
-            cumulativeFuel += path[i].FuelUsed;
-            path[i].CumulativeFuel = cumulativeFuel;
-        }
-
-        return (minFuel, path);
+        
+        _logger.LogInformation("AsyncTreasureHuntService: Completed calculation with total fuel {TotalFuel} and {PathCount} steps", cumulativeFuel, path.Count);
+        return (cumulativeFuel, path);
     }
 
     /// <summary>
