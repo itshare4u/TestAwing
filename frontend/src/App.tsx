@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Container, Typography, Box, Alert } from '@mui/material';
 import axios from 'axios';
 
@@ -326,6 +326,11 @@ const App: React.FC = () => {
             console.error('Failed to fetch history:', err);
         }
     }, [historyPage, itemsPerPage]);
+
+    // Auto-fetch history on component mount and when history page changes
+    useEffect(() => {
+        fetchHistory();
+    }, [fetchHistory]);
 
     // Async solve functions
     const startAsyncSolve = async (): Promise<number> => {
