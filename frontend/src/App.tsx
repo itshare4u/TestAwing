@@ -2,6 +2,9 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Container, Typography, Box, Alert } from '@mui/material';
 import axios from 'axios';
 
+// Import configuration
+import config from './config';
+
 // Import components
 import ParameterInput from './components/ParameterInput';
 import MatrixInput from './components/MatrixInput';
@@ -181,7 +184,7 @@ const App: React.FC = () => {
         setLoading(true);
         
         try {
-            const response = await axios.get(`http://localhost:5001/api/generate-random-data?n=${n}&m=${m}&p=${p}`);
+            const response = await axios.get(`${config.apiUrl}/generate-random-data?n=${n}&m=${m}&p=${p}`);
             const { n: newN, m: newM, p: newP, matrix: randomMatrix } = response.data;
             
             setN(newN);
@@ -318,7 +321,7 @@ const App: React.FC = () => {
             const currentPage = page || historyPage;
             console.log('Fetching history for page:', currentPage);
             const response = await axios.get<PaginatedResponse<TreasureHuntResult>>(
-                `http://localhost:5001/api/treasure-hunts?page=${currentPage}&pageSize=${itemsPerPage}`
+                `${config.apiUrl}/treasure-hunts?page=${currentPage}&pageSize=${itemsPerPage}`
             );
             console.log('History response:', response.data);
             setHistory(response.data.data);
@@ -346,18 +349,18 @@ const App: React.FC = () => {
             }
         };
 
-        const response = await axios.post<AsyncSolveResponse>('http://localhost:5001/api/treasure-hunt/solve-async', request);
+        const response = await axios.post<AsyncSolveResponse>(`${config.apiUrl}/treasure-hunt/solve-async`, request);
         return response.data.solveId;
     };
 
     const checkSolveStatus = async (solveId: number): Promise<SolveStatusResponse> => {
-        const response = await axios.get<SolveStatusResponse>(`http://localhost:5001/api/treasure-hunt/solve-status/${solveId}`);
+        const response = await axios.get<SolveStatusResponse>(`${config.apiUrl}/treasure-hunt/solve-status/${solveId}`);
         return response.data;
     };
 
     const cancelSolve = async (solveId: number): Promise<boolean> => {
         try {
-            await axios.post(`http://localhost:5001/api/treasure-hunt/cancel-solve/${solveId}`);
+            await axios.post(`${config.apiUrl}/treasure-hunt/cancel-solve/${solveId}`);
             return true;
         } catch (err) {
             console.error('Failed to cancel solve:', err);
@@ -536,7 +539,7 @@ const App: React.FC = () => {
                         onRefresh={() => fetchHistory()}
                         onHistoryItemClick={async (item: TreasureHuntResult) => {
                             try {
-                                const response = await axios.get(`http://localhost:5001/api/treasure-hunt/${item.id}`);
+                                const response = await axios.get(`${config.apiUrl}/treasure-hunt/${item.id}`);
                                 const resultWithPath: TreasureHuntResultWithPath = response.data;
                                 
                                 setN(resultWithPath.n);
