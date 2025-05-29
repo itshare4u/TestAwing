@@ -24,6 +24,7 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
     onMatrixChange
 }) => {
     const [parentWidth, setParentWidth] = useState(0);
+    const [parentHeight, setParentHeight] = useState(0);
     const containerRef = React.useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -32,6 +33,7 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
         const resizeObserver = new ResizeObserver(entries => {
             for (let entry of entries) {
                 setParentWidth(entry.contentRect.width);
+                setParentHeight(entry.contentRect.height);
             }
         });
         
@@ -44,12 +46,14 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
         const rows = matrix.length;
         const cols = rows > 0 ? matrix[0].length : 0;
         const totalWidth = Math.min(cols * CELL_WIDTH, parentWidth || 0);
-        const totalHeight = Math.min(rows * CELL_HEIGHT, MAX_GRID_HEIGHT);
+        // Use 50% of parent height, with fallback to original MAX_GRID_HEIGHT
+        const maxGridHeight = parentHeight > 0 ? parentHeight * 0.5 : MAX_GRID_HEIGHT;
+        const totalHeight = Math.min(rows * CELL_HEIGHT, maxGridHeight);
         const hasHorizontalScroll = cols * CELL_WIDTH > (parentWidth || 0);
-        const hasVerticalScroll = rows * CELL_HEIGHT > MAX_GRID_HEIGHT;
+        const hasVerticalScroll = rows * CELL_HEIGHT > maxGridHeight;
         
         return { rows, cols, totalWidth, totalHeight, hasHorizontalScroll, hasVerticalScroll };
-    }, [matrix, parentWidth]);
+    }, [matrix, parentWidth, parentHeight]);
 
     // Memoize Cell component
     const Cell = useCallback(({ columnIndex, rowIndex, style }: any) => (
@@ -82,8 +86,8 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
     }
 
     return (
-        <Box ref={containerRef} sx={{ 
-            maxHeight: MAX_GRID_HEIGHT,
+        <Box ref={containerRef} sx={{
+            maxHeight: parentHeight > 0 ? parentHeight * 0.5 : MAX_GRID_HEIGHT,
             minHeight: Math.min(200, rows * CELL_HEIGHT),
             maxWidth: parentWidth,
             width: '100%',
