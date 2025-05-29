@@ -314,11 +314,14 @@ const App: React.FC = () => {
     };
 
     // Load history
-    const fetchHistory = useCallback(async () => {
+    const fetchHistory = useCallback(async (page?: number) => {
         try {
+            const currentPage = page || historyPage;
+            console.log('Fetching history for page:', currentPage);
             const response = await axios.get<PaginatedResponse<TreasureHuntResult>>(
-                `http://localhost:5001/api/treasure-hunts?page=${historyPage}&pageSize=${itemsPerPage}`
+                `http://localhost:5001/api/treasure-hunts?page=${currentPage}&pageSize=${itemsPerPage}`
             );
+            console.log('History response:', response.data);
             setHistory(response.data.data);
             setTotalPages(response.data.totalPages);
             setTotalCount(response.data.totalCount);
@@ -378,11 +381,14 @@ const App: React.FC = () => {
                     setCurrentSolveId(null);
                     
                     if (status.result) {
+                        console.log('Solve completed, updating UI and fetching history...');
                         setResult(status.result.minFuel);
                         setCurrentPath(status.result.path || []);
                         setSelectedHistoryItem(null);
                         setHistoryPage(1);
-                        await fetchHistory();
+                        // Force fetch history for page 1 to get the latest data
+                        await fetchHistory(1);
+                        console.log('History fetch completed after solve');
                     }
                 } else if (status.status === SolveStatus.Cancelled || status.status === SolveStatus.Failed) {
                     clearInterval(pollInterval);
@@ -522,6 +528,7 @@ const App: React.FC = () => {
                         totalPages={totalPages}
                         historyPage={historyPage}
                         onHistoryPageChange={setHistoryPage}
+                        onRefresh={() => fetchHistory()}
                         onHistoryItemClick={async (item: TreasureHuntResult) => {
                             try {
                                 const response = await axios.get(`http://localhost:5001/api/treasure-hunt/${item.id}`);

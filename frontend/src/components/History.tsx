@@ -11,8 +11,11 @@ import {
     TableRow,
     Divider,
     Pagination,
-    Chip
+    Chip,
+    IconButton,
+    Tooltip
 } from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { TreasureHuntResult, SolveStatus } from '../types';
 
 interface HistoryProps {
@@ -22,6 +25,7 @@ interface HistoryProps {
     historyPage: number;
     onHistoryPageChange: (page: number) => void;
     onHistoryItemClick: (item: TreasureHuntResult) => void;
+    onRefresh?: () => void;
 }
 
 // Helper function to get status display information
@@ -48,13 +52,23 @@ const History: React.FC<HistoryProps> = ({
     totalPages,
     historyPage,
     onHistoryPageChange,
-    onHistoryItemClick
+    onHistoryItemClick,
+    onRefresh
 }) => {
     return (
         <>
-            <Typography variant="h5" gutterBottom>
-                Previous Solutions
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>
+                    Previous Solutions
+                </Typography>
+                {onRefresh && (
+                    <Tooltip title="Refresh history">
+                        <IconButton onClick={onRefresh} size="small">
+                            <RefreshIcon />
+                        </IconButton>
+                    </Tooltip>
+                )}
+            </Box>
             <Typography variant="body2" color="text.secondary" sx={{mb: 1}}>
                 Click on any row to view the solution path on the matrix above
                 {totalCount > 0 && ` • Total: ${totalCount} solutions`}

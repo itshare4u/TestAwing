@@ -158,7 +158,7 @@ app.MapPost("/api/treasure-hunt", async (TreasureHuntRequest request, OptimizedT
     }
 });
 
-app.MapGet("/api/treasurehunts", async (int? page, int? pageSize, OptimizedTreasureHuntService service) =>
+app.MapGet("/api/treasure-hunts", async (int? page, int? pageSize, OptimizedTreasureHuntService service) =>
 {
     var pageNum = page ?? 1;
     var pageSizeNum = pageSize ?? 8;
