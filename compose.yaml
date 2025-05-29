@@ -11,9 +11,11 @@
       - MSSQL_PID=Developer
     volumes:
       - sqlserver_data:/var/opt/mssql
+    networks:
+      - testawing-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P TreasureHunt@2024 -Q 'SELECT 1' || exit 1"]
+      test: [ "CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P TreasureHunt@2024 -C -Q 'SELECT 1' || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -30,7 +32,7 @@
     ports:
       - "5001:8080"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
       - DatabaseProvider=SqlServer
       - ConnectionStrings__DefaultConnection=Server=testawing-sqlserver,1433;Database=TreasureHuntDb;User=sa;Password=TreasureHunt@2024;TrustServerCertificate=true;
@@ -40,6 +42,8 @@
     depends_on:
       testawing-sqlserver:
         condition: service_healthy
+    networks:
+      - testawing-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
@@ -60,9 +64,15 @@
       - REACT_APP_API_URL=http://localhost:5001/api
     depends_on:
       - testawing-backend
+    networks:
+      - testawing-network
     restart: unless-stopped
 
 volumes:
   testawing_data:
   sqlserver_data:
+    driver: local
 
+networks:
+  testawing-network:
+    driver: bridge
