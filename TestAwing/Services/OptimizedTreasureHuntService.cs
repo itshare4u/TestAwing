@@ -37,8 +37,8 @@ public class OptimizedTreasureHuntService
                 throw new ArgumentException("Matrix column count doesn't match M");
         }
 
-        // Calculate minimum fuel required and get the path using Held-Karp algorithm
-        var result = CalculateOptimalPath(request);
+        // Calculate minimum fuel required and get the path using simple DP algorithm
+        var result = CalculateOptimalPathDPSimple(request);
         var minFuel = result.MinFuel;
         var path = result.Path;
 
@@ -177,10 +177,9 @@ public class OptimizedTreasureHuntService
     }
 
     /// <summary>
-    /// Calculate optimal path using the Held-Karp algorithm (dynamic programming approach)
-    /// This guarantees globally optimal solution unlike the greedy approach
+    /// Calculate optimal path using a simple dynamic programming approach
     /// </summary>
-    private TreasureHuntResponse CalculateOptimalPath(TreasureHuntRequest request)
+    private TreasureHuntResponse CalculateOptimalPathDPSimple(TreasureHuntRequest request)
     {
         var n = request.N;
         var m = request.M;
@@ -219,9 +218,138 @@ public class OptimizedTreasureHuntService
             chestOptions.Add(chestPositions[chest]);
         }
 
-        // Always use heuristic approach for consistency with async service
-        // This provides faster computation and more consistent results
-        return CalculateOptimalPathHeuristic(chestOptions, p, matrix);
+        // Use simple DP for optimal solution
+        return CalculateOptimalPathDPSimple(chestOptions, p, matrix);
+    }
+
+    /// <summary>
+    /// Simple dynamic programming solution that finds the optimal path
+    /// </summary>
+    private TreasureHuntResponse CalculateOptimalPathDPSimple(List<List<(int row, int col)>> chestOptions, int p, int[][] matrix)
+    {
+        var startPos = (row: 0, col: 0);
+        
+        // Use simple DP approach for better results and simplicity
+        var chestPositions = new Dictionary<int, List<(int, int)>>();
+        for (int i = 0; i < chestOptions.Count; i++)
+        {
+            chestPositions[i + 1] = chestOptions[i];
+        }
+        
+        // DP table: dp[i][j] = minimum fuel to reach chest i at position j
+        var dp = new Dictionary<int, double[]>();
+        var parent = new Dictionary<int, (int prevChest, int prevPos)[]>();
+        
+        // Initialize for chest 1
+        var chest1Positions = chestPositions[1];
+        dp[1] = new double[chest1Positions.Count];
+        parent[1] = new (int, int)[chest1Positions.Count];
+        
+        for (int j = 0; j < chest1Positions.Count; j++)
+        {
+            dp[1][j] = CalculateDistance(startPos, chest1Positions[j]);
+            parent[1][j] = (-1, -1); // Coming from start
+        }
+        
+        // Fill DP table for chests 2 to p
+        for (int chest = 2; chest <= p; chest++)
+        {
+            var currentPositions = chestPositions[chest];
+            var prevPositions = chestPositions[chest - 1];
+            
+            dp[chest] = new double[currentPositions.Count];
+            parent[chest] = new (int, int)[currentPositions.Count];
+            
+            for (int j = 0; j < currentPositions.Count; j++)
+            {
+                dp[chest][j] = double.MaxValue;
+                
+                for (int k = 0; k < prevPositions.Count; k++)
+                {
+                    var cost = dp[chest - 1][k] + CalculateDistance(prevPositions[k], currentPositions[j]);
+                    if (cost < dp[chest][j])
+                    {
+                        dp[chest][j] = cost;
+                        parent[chest][j] = (chest - 1, k);
+                    }
+                }
+            }
+        }
+        
+        // Find the minimum cost for the last chest
+        var lastChestPositions = chestPositions[p];
+        var minFuel = double.MaxValue;
+        var bestLastPos = 0;
+        
+        for (int j = 0; j < lastChestPositions.Count; j++)
+        {
+            if (dp[p][j] < minFuel)
+            {
+                minFuel = dp[p][j];
+                bestLastPos = j;
+            }
+        }
+        
+        // Reconstruct path
+        var path = new List<PathStep>();
+        
+        // Add start position
+        path.Add(new PathStep
+        {
+            ChestNumber = 0,
+            Row = startPos.row,
+            Col = startPos.col,
+            FuelUsed = 0,
+            CumulativeFuel = 0
+        });
+        
+        // Backtrack to get the optimal path
+        var pathPositions = new List<(int chest, int row, int col)>();
+        int currentChest = p;
+        int currentPos = bestLastPos;
+        
+        while (currentChest >= 1)
+        {
+            var position = chestPositions[currentChest][currentPos];
+            pathPositions.Add((currentChest, position.Item1, position.Item2));
+            
+            if (currentChest == 1) break;
+            
+            var (prevChest, prevPos) = parent[currentChest][currentPos];
+            currentChest = prevChest;
+            currentPos = prevPos;
+        }
+        
+        // Reverse to get chronological order
+        pathPositions.Reverse();
+        
+        // Convert to PathStep objects
+        double cumulativeFuel = 0;
+        var currentPosition = startPos;
+        
+        foreach (var (chest, row, col) in pathPositions)
+        {
+            var targetPosition = (row, col);
+            var fuelUsed = CalculateDistance(currentPosition, targetPosition);
+            cumulativeFuel += fuelUsed;
+            
+            path.Add(new PathStep
+            {
+                ChestNumber = chest,
+                Row = row,
+                Col = col,
+                FuelUsed = fuelUsed,
+                CumulativeFuel = cumulativeFuel
+            });
+            
+            currentPosition = targetPosition;
+        }
+        
+        return new TreasureHuntResponse
+        {
+            MinFuel = minFuel,
+            Path = path
+        };
     }
 
     /// <summary>
