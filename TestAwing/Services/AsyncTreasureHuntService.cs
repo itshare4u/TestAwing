@@ -114,27 +114,50 @@ public class AsyncTreasureHuntService
     {
         try
         {
-            // Cancel the operation if it's still active
-            if (_activeSolves.TryRemove(solveId, out var cts))
-            {
-                cts.Cancel();
-                cts.Dispose();
-            }
-
-            // Update database status
+            _logger.LogInformation("Attempting to cancel solve operation {SolveId}", solveId);
+            
+            // First check if the operation exists and is cancelable
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<TreasureHuntContext>();
             
             var result = await context.TreasureHuntResults.FindAsync(solveId);
-            if (result != null && (result.Status == SolveStatus.Pending || result.Status == SolveStatus.InProgress))
+            if (result == null)
             {
-                result.Status = SolveStatus.Cancelled;
-                result.CompletedAt = DateTime.UtcNow;
-                await context.SaveChangesAsync();
-                return true;
+                _logger.LogWarning("Solve operation {SolveId} not found", solveId);
+                return false;
             }
 
-            return false;
+            if (result.Status != SolveStatus.Pending && result.Status != SolveStatus.InProgress)
+            {
+                _logger.LogInformation("Solve operation {SolveId} cannot be cancelled (status: {Status})", solveId, result.Status);
+                return false;
+            }
+
+            // Cancel the operation if it's still active
+            bool tokenCancelled = false;
+            if (_activeSolves.TryGetValue(solveId, out var cts))
+            {
+                cts.Cancel();
+                tokenCancelled = true;
+                _logger.LogInformation("Cancellation token triggered for solve operation {SolveId}", solveId);
+            }
+
+            // Update database status immediately
+            result.Status = SolveStatus.Cancelled;
+            result.CompletedAt = DateTime.UtcNow;
+            result.ErrorMessage = "Operation was cancelled by user";
+            await context.SaveChangesAsync();
+            
+            _logger.LogInformation("Solve operation {SolveId} marked as cancelled in database", solveId);
+
+            // Clean up the token after updating DB
+            if (tokenCancelled)
+            {
+                _activeSolves.TryRemove(solveId, out _);
+                cts?.Dispose();
+            }
+
+            return true;
         }
         catch (Exception ex)
         {
@@ -157,9 +180,17 @@ public class AsyncTreasureHuntService
                 var result = await context.TreasureHuntResults.FindAsync(solveId);
                 if (result == null) return;
 
+                // Check if already cancelled before starting
+                if (result.Status == SolveStatus.Cancelled)
+                {
+                    _logger.LogInformation("Solve operation {SolveId} was already cancelled before starting", solveId);
+                    return;
+                }
+
                 result.Status = SolveStatus.InProgress;
                 result.StartedAt = DateTime.UtcNow;
                 await context.SaveChangesAsync();
+                _logger.LogInformation("Solve operation {SolveId} status updated to InProgress", solveId);
             }
 
             // Check for cancellation before starting heavy computation
@@ -171,28 +202,44 @@ public class AsyncTreasureHuntService
             // Check for cancellation before saving results
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Update result with solution
+            // Update result with solution - use a separate scope and check status first
             using (var scope = _scopeFactory.CreateScope())
             {
                 var context = scope.ServiceProvider.GetRequiredService<TreasureHuntContext>();
                 var result = await context.TreasureHuntResults.FindAsync(solveId);
-                if (result != null)
+                if (result != null && result.Status == SolveStatus.InProgress)
                 {
                     result.PathJson = JsonSerializer.Serialize(solveResult.Path);
                     result.MinFuel = solveResult.MinFuel;
                     result.Status = SolveStatus.Completed;
                     result.CompletedAt = DateTime.UtcNow;
                     await context.SaveChangesAsync();
+                    _logger.LogInformation("Solve operation {SolveId} completed successfully", solveId);
+                }
+                else
+                {
+                    _logger.LogInformation("Solve operation {SolveId} was cancelled during execution (status: {Status})", solveId, result?.Status);
                 }
             }
-
-            _logger.LogInformation("Solve operation {SolveId} completed successfully", solveId);
         }
         catch (OperationCanceledException)
         {
-            // Handle cancellation
-            await UpdateSolveStatus(solveId, SolveStatus.Cancelled, "Operation was cancelled");
-            _logger.LogInformation("Solve operation {SolveId} was cancelled", solveId);
+            // Handle cancellation - only update if not already updated by CancelSolveAsync
+            _logger.LogInformation("Solve operation {SolveId} was cancelled via OperationCanceledException", solveId);
+            
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var context = scope.ServiceProvider.GetRequiredService<TreasureHuntContext>();
+                var result = await context.TreasureHuntResults.FindAsync(solveId);
+                if (result != null && result.Status != SolveStatus.Cancelled)
+                {
+                    result.Status = SolveStatus.Cancelled;
+                    result.CompletedAt = DateTime.UtcNow;
+                    result.ErrorMessage = "Operation was cancelled";
+                    await context.SaveChangesAsync();
+                    _logger.LogInformation("Solve operation {SolveId} status updated to Cancelled via exception handler", solveId);
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -203,8 +250,11 @@ public class AsyncTreasureHuntService
         finally
         {
             // Clean up the cancellation token
-            _activeSolves.TryRemove(solveId, out var cts);
-            cts?.Dispose();
+            if (_activeSolves.TryRemove(solveId, out var cts))
+            {
+                cts?.Dispose();
+                _logger.LogInformation("Cleaned up cancellation token for solve operation {SolveId}", solveId);
+            }
         }
     }
 

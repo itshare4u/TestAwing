@@ -429,6 +429,12 @@ const App: React.FC = () => {
                 abortController.abort();
                 setAbortController(null);
             }
+
+            // Refresh history to show the cancelled item
+            console.log('Solve cancelled, refreshing history...');
+            setHistoryPage(1);
+            await fetchHistory(1);
+            console.log('History refresh completed after cancel');
         }
     };
 
