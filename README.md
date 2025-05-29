@@ -27,6 +27,41 @@ Fuel required to travel from (x1,y1) to (x2,y2) = √((x1-x2)² + (y1-y2)²)
 
 ## 🚀 Quick Start with Docker
 
+### Production Setup with SQL Server
+
+For production deployment with SQL Server database:
+
+```bash
+# Clone and navigate to the project
+git clone <repository-url>
+cd TestAwing
+
+# Start all services including SQL Server
+docker-compose up -d
+
+# Check services status
+docker-compose ps
+
+# Test the application
+curl http://localhost:5001/health
+curl "http://localhost:5001/api/generate-random-data?n=3&m=3&p=3"
+```
+
+The full production application will be running at:
+
+- **Frontend**: http://localhost:3001 ✨ (React app with nginx)
+- **Backend API**: http://localhost:5001 (ASP.NET Core API with SQL Server)
+- **SQL Server**: localhost:1433 (Database server)
+
+### Development Setup (In-Memory Database)
+
+For quick development/testing without SQL Server:
+
+```bash
+# Use the test configuration (in-memory database)
+docker-compose -f compose.test.yaml up -d
+```
+
 Want to try the full application immediately? Run these commands:
 
 ```bash
@@ -59,8 +94,13 @@ For a valid treasure hunt problem:
 ### Backend (C#)
 
 - ASP.NET Core 9.0
-- Entity Framework Core (In-Memory Database)
+- Entity Framework Core with multiple database providers:
+    - **In-Memory Database** (development/testing)
+    - **SQL Server** (production)
+    - **SQLite** (lightweight option)
+    - **MySQL** (alternative production option)
 - RESTful API
+- EF Core Migrations for database schema management
 
 ### Frontend (React)
 
@@ -128,6 +168,17 @@ The application uses a **microservices architecture** with separate Docker conta
 
 ### Architecture Overview
 
+**Production Architecture (with SQL Server):**
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Backend       │    │   SQL Server    │
+│   (React/nginx) │◄──►│   (ASP.NET)     │◄──►│   Database      │
+│   Port: 3001    │    │   Port: 5001    │    │   Port: 1433    │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+**Development Architecture (In-Memory Database):**
+
 ```
 ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │    │   Backend       │
@@ -138,6 +189,7 @@ The application uses a **microservices architecture** with separate Docker conta
 
 - **Frontend**: React application served by nginx with API proxy
 - **Backend**: ASP.NET Core API with Entity Framework
+- **Database**: SQL Server (production) or In-Memory (development)
 - **Communication**: Frontend calls backend via `/api/*` endpoints
 
 ### Quick Start with Docker Compose
@@ -215,6 +267,8 @@ services:
 - **Health checks** for container monitoring
 - **Environment variables** for configuration
 - **Production-ready** ASP.NET Core configuration
+- **SQL Server tools** integrated for production database operations
+- **EF Core migrations** automatically applied on startup
 
 #### Frontend Container
 - **Nginx** web server for production-grade static file serving
@@ -252,7 +306,8 @@ curl http://localhost:3001/api/health  # via nginx proxy
 #### Backend Container
 - `ASPNETCORE_URLS=http://+:8080` - Application binding URL
 - `ASPNETCORE_ENVIRONMENT=Development` - Runtime environment
-- `DatabaseProvider=InMemory` - Database provider (InMemory/SQLite/MySQL/SqlServer)
+- `DatabaseProvider=InMemory/SqlServer/SQLite/MySQL` - Database provider selection
+- `ConnectionStrings__DefaultConnection=...` - Database connection string (for SQL Server/SQLite/MySQL)
 - `TZ=UTC` - Timezone configuration
 
 #### Frontend Container
@@ -268,6 +323,8 @@ curl http://localhost:3001/api/health  # via nginx proxy
 - **Final Size**: ~576MB
 - **Security**: Runs as non-root user (`appuser`)
 - **Health Check**: Automatic monitoring via `/health` endpoint
+- **Database Support**: SQL Server tools (mssql-tools18) for production database connectivity
+- **Migrations**: EF Core migrations automatically applied during container startup
 
 #### Frontend Image (`testawing-frontend`)
 - **Base Images**: `node:18-alpine` (build), `nginx:alpine` (runtime)
@@ -282,9 +339,11 @@ When deploying to production:
 1. **Update API URL**: Modify `REACT_APP_API_URL` in frontend Dockerfile
 2. **SSL/TLS**: Configure nginx with SSL certificates
 3. **Environment**: Set `ASPNETCORE_ENVIRONMENT=Production`
-4. **Database**: Switch from InMemory to persistent database
+4. **Database**: Configure SQL Server connection string
 5. **Monitoring**: Set up health check monitoring
 6. **Scaling**: Use Docker Swarm or Kubernetes for scaling
+7. **Security**: Update default SQL Server password
+8. **Backup**: Configure database backup strategy
 
 Example production environment variables:
 ```bash
@@ -292,7 +351,11 @@ Example production environment variables:
 ASPNETCORE_ENVIRONMENT=Production
 ASPNETCORE_URLS=https://+:443;http://+:80
 DatabaseProvider=SqlServer
-ConnectionStrings__DefaultConnection="Server=..."
+ConnectionStrings__DefaultConnection="Server=your-sql-server;Database=TreasureHuntDb;User=your-user;Password=your-secure-password;TrustServerCertificate=true;"
+
+# SQL Server
+SA_PASSWORD=YourSecurePassword123!
+MSSQL_PID=Standard
 
 # Frontend
 REACT_APP_API_URL=https://api.yourdomain.com/api
@@ -325,7 +388,7 @@ Solve a treasure hunt problem immediately (for smaller problems)
 **Response:**
 ```json
 {
-  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "id": 1,
   "n": 3,
   "m": 3,
   "p": 3,
@@ -352,7 +415,7 @@ Start an asynchronous solve operation (recommended for larger problems)
 **Response:**
 ```json
 {
-  "requestId": "550e8400-e29b-41d4-a716-446655440000",
+  "requestId": 1,
   "status": "Pending",
   "message": "Solve request has been queued"
 }
@@ -365,10 +428,10 @@ Check the status of an asynchronous solve operation
 **Response:**
 ```json
 {
-  "requestId": "550e8400-e29b-41d4-a716-446655440000",
+  "requestId": 1,
   "status": "Completed",
   "result": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "id": 1,
     "n": 3,
     "m": 3,
     "p": 3,
@@ -394,7 +457,7 @@ Cancel a pending or in-progress asynchronous solve operation
 **Response:**
 ```json
 {
-  "requestId": "550e8400-e29b-41d4-a716-446655440000",
+  "requestId": 1,
   "status": "Cancelled",
   "message": "Solve request has been cancelled"
 }
@@ -415,7 +478,7 @@ Get paginated list of previously solved treasure hunts
 {
   "items": [
     {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "id": 1,
       "n": 3,
       "m": 3,
       "p": 3,
@@ -437,7 +500,7 @@ Get detailed information about a specific treasure hunt including the solution p
 **Response:**
 ```json
 {
-  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "id": 1,
   "n": 3,
   "m": 3,
   "p": 3,
@@ -453,104 +516,44 @@ Get detailed information about a specific treasure hunt including the solution p
 }
 ```
 
-### Utility Endpoints
-
-#### GET /api/generate-random-data
-
-Generate random test data that follows treasure hunt constraints
-
-**Parameters:**
-- `n` (optional): Number of rows (default: 3)
-- `m` (optional): Number of columns (default: 3)  
-- `p` (optional): Maximum chest number (default: min(n×m, 10))
-
-**Constraints:**
-- n×m must be ≥ p (matrix must have enough positions for all chest numbers)
-- Each number from 1 to p will appear at least once
-- Remaining positions filled with random numbers from 1 to p
-
-**Example:** `/api/generate-random-data?n=4&m=4&p=6`
-
-**Response:**
-```json
-{
-  "n": 4,
-  "m": 4,
-  "p": 6,
-  "matrix": [
-    [1, 2, 3, 4],
-    [5, 6, 1, 2],
-    [3, 4, 5, 6],
-    [1, 2, 3, 4]
-  ]
-}
-```
-
 Returns a valid treasure hunt matrix where numbers 1-6 each appear at least once.
-
-### Error Handling
-
-All endpoints return appropriate HTTP status codes:
-- `200 OK`: Successful operation
-- `400 Bad Request`: Invalid input parameters
-- `404 Not Found`: Resource not found
-- `409 Conflict`: Operation conflict (e.g., trying to cancel completed solve)
-- `500 Internal Server Error`: Server error
-
-Error responses include descriptive messages:
-```json
-{
-  "error": "Matrix validation failed",
-  "details": "Each chest number from 1 to p must appear at least once in the matrix"
-}
-```
-
-## Example Test Cases
-
-### Test 1
-
-- **Input**: n=3, m=3, p=3
-- **Matrix**:
-  ```
-  3 2 2
-  2 2 2
-  2 2 1
-  ```
-- **Expected Output**: 4√2 ≈ 5.65685
-
-### Test 2
-
-- **Input**: n=3, m=4, p=3
-- **Matrix**:
-  ```
-  2 1 1 1
-  1 1 1 1
-  2 1 1 3
-  ```
-- **Expected Output**: 5
-
-### Test 3
-
-- **Input**: n=3, m=4, p=12
-- **Matrix**:
-  ```
-  1  2  3  4
-  8  7  6  5
-  9  10 11 12
-  ```
-- **Expected Output**: 11
 
 ## Algorithm
 
-The solution uses a greedy approach:
+The solution uses **Dynamic Programming** approach for optimal pathfinding:
 
-1. Start at position (1,1) with key 0
-2. For each chest from 1 to p:
-    - Find the chest's position in the matrix
-    - Calculate Euclidean distance from current position
-    - Add distance to total fuel
-    - Move to chest position
-3. Return total fuel required
+### Core Algorithm
+
+1. **State Definition**: `dp[chest][row][col]` = minimum fuel to reach position `(row, col)` after collecting chest
+   number `chest`
+
+2. **Base Case**: Start at position `(1,1)` with key 0
+    - `dp[0][1][1] = 0` (no fuel needed to start)
+
+3. **State Transition**: For each chest from 1 to p:
+    - Find all positions containing the current chest number
+    - For each valid previous state, calculate the fuel needed to move to each chest position
+    - Update the minimum fuel for reaching each chest position
+    - `dp[chest][newRow][newCol] = min(dp[chest-1][oldRow][oldCol] + distance)`
+
+4. **Final Result**: The minimum value among all `dp[p][row][col]` positions
+
+### Distance Calculation
+
+Fuel required to travel from `(x1,y1)` to `(x2,y2)` = `√((x1-x2)² + (y1-y2)²)`
+
+### Key Optimizations
+
+- **Memoization**: Stores computed states to avoid recalculation
+- **Pruning**: Only explores reachable states to reduce complexity
+- **Early Termination**: Stops exploring paths that exceed current minimum
+- **Asynchronous Processing**: Large problems solved in background with cancellation support
+
+### Time Complexity
+
+- **Time**: O(p × n × m × k) where k is the average number of positions per chest
+- **Space**: O(p × n × m) for the DP table
+- **Practical**: Optimized for real-world constraints with sparse chest distributions
 
 ## Project Structure
 
@@ -584,81 +587,3 @@ TestAwing/
 └── README.md                   # This file
 ```
 
-## 🔧 Troubleshooting
-
-### Common Issues
-
-#### Frontend not connecting to Backend
-- **Problem**: Frontend shows API connection errors
-- **Solution**: Ensure both services are running and backend is accessible
-```bash
-# Check if services are running
-docker-compose ps
-
-# Test backend directly
-curl http://localhost:5001/health
-
-# Check frontend logs
-docker-compose logs frontend
-```
-
-#### CORS Issues
-- **Problem**: Browser blocks API calls due to CORS policy
-- **Solution**: Backend is configured for `localhost:3001`, ensure frontend runs on this port
-
-#### Container Build Failures
-- **Problem**: Docker build fails for frontend
-- **Solution**: Clear Docker cache and rebuild
-```bash
-docker system prune -f
-docker-compose build --no-cache
-```
-
-### Development Tips
-
-1. **Hot Reload**: For development, use `npm run dev` instead of Docker
-2. **API Testing**: Use the direct backend URL (localhost:5001) for API testing
-3. **Debugging**: Use `docker-compose logs -f [service]` to monitor real-time logs
-4. **Port Conflicts**: If ports 3001/5001 are in use, modify `compose.yaml`
-
-### Performance Optimization
-
-- **Frontend**: Nginx serves static files efficiently with gzip compression
-- **Backend**: In-memory database for fast development (switch to SQL for production)
-- **Caching**: Browser caching enabled for static assets
-- **API**: Async operations for large matrix computations
-
-### Monitoring and Logging
-
-#### Container Health Monitoring
-```bash
-# Check health status
-docker-compose ps
-
-# View health check logs
-docker inspect testawing-backend-1 | grep -A 10 "Health"
-
-# Real-time monitoring
-watch docker-compose ps
-```
-
-#### Log Management
-```bash
-# Follow logs in real-time
-docker-compose logs -f
-
-# View last 100 lines
-docker-compose logs --tail=100
-
-# Filter by service
-docker-compose logs backend | grep ERROR
-
-# Export logs to file
-docker-compose logs > app-logs.txt
-```
-
-#### Performance Monitoring
-- **Backend**: Health endpoint at `/health` provides status
-- **Frontend**: Browser network tab for client-side performance
-- **Database**: In-memory database performance is sufficient for development
-- **Resource Usage**: Use `docker stats` to monitor resource consumption
