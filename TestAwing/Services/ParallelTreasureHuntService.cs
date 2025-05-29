@@ -219,12 +219,8 @@ public class ParallelTreasureHuntService
             chestOptions.Add(chestPositions[chest]);
         }
 
-        // Choose algorithm based on problem size
-        if (p <= 10) {
-            return CalculateOptimalPathDP(chestOptions, p, matrix);
-        } else {
-            return CalculateOptimalPathHeuristic(chestOptions, p, matrix);
-        }
+        // Always use the parallel DP algorithm regardless of p value
+        return CalculateOptimalPathDP(chestOptions, p, matrix);
     }
 
     /// <summary>
