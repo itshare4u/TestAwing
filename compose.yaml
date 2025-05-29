@@ -4,4 +4,24 @@
     build:
       context: .
       dockerfile: TestAwing/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+    volumes:
+      # Optional: Mount for development database persistence
+      - testawing_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  testawing_data:
 

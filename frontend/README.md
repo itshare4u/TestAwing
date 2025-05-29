@@ -1,46 +1,201 @@
-# Getting Started with Create React App
+# 🏴‍☠️ Treasure Hunt Solver - Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+React TypeScript frontend for the Treasure Hunt Solver application with Material-UI components and async operation support.
+
+## Features
+
+- **Interactive Matrix Input**: Dynamic grid with validation and visual feedback
+- **Asynchronous Operations**: Support for long-running solve operations with real-time status updates
+- **Cancellation Support**: Ability to cancel in-progress operations
+- **Virtualized Solution Paths**: Optimized rendering for large solution paths
+- **Paginated History**: Browse through previous treasure hunts with pagination
+- **Responsive Design**: Works seamlessly on desktop and mobile devices
+- **Material-UI**: Modern, accessible interface components
+
+## Environment Setup
+
+Create a `.env` file in the frontend directory:
+
+```env
+REACT_APP_API_BASE_URL=http://localhost:5001
+```
+
+See `ENVIRONMENT.md` for detailed configuration options.
+
+## Architecture Overview
+
+### Component Structure
+
+```
+src/
+├── App.tsx                      # Main application with routing
+├── types.ts                     # TypeScript interfaces
+├── config.ts                    # API configuration
+└── components/
+    ├── MatrixInput.tsx          # Matrix grid input with validation
+    ├── ParameterInput.tsx       # Problem parameter controls
+    ├── ResultDisplay.tsx        # Solution results and status
+    ├── VirtualizedSolutionPath.tsx # Performance-optimized path display
+    └── History.tsx              # Paginated history browser
+```
+
+### Key TypeScript Interfaces
+
+```typescript
+// Treasure hunt problem definition
+interface TreasureHuntRequest {
+  n: number;
+  m: number;
+  p: number;
+  matrix: number[][];
+}
+
+// Async operation tracking
+interface AsyncSolveResponse {
+  requestId: string;
+  status: SolveStatus;
+  message?: string;
+}
+
+// Solution path representation
+interface PathStep {
+  chestNumber: number;
+  position: Position;
+}
+
+// Status enumeration
+enum SolveStatus {
+  Pending = 0,
+  InProgress = 1,
+  Completed = 2,
+  Cancelled = 3,
+  Failed = 4
+}
+```
+
+### API Integration Patterns
+
+The frontend integrates with the backend API using several patterns:
+
+#### Synchronous Operations
+For smaller problems (typically n×m×p < 1000), uses immediate solving:
+```typescript
+const response = await fetch('/api/treasure-hunt', {
+  method: 'POST',
+  body: JSON.stringify(request)
+});
+```
+
+#### Asynchronous Operations
+For larger problems, uses async workflow with polling:
+```typescript
+// Start async solve
+const asyncResponse = await fetch('/api/treasure-hunt/solve-async', {
+  method: 'POST',
+  body: JSON.stringify(request)
+});
+
+// Poll for status
+const checkStatus = async (requestId: string) => {
+  const statusResponse = await fetch(`/api/treasure-hunt/solve-status/${requestId}`);
+  // Handle status updates
+};
+```
+
+#### Cancellation Support
+```typescript
+const cancelSolve = async (requestId: string) => {
+  await fetch(`/api/treasure-hunt/cancel-solve/${requestId}`, {
+    method: 'POST'
+  });
+};
+```
+
+### Performance Optimizations
+
+#### VirtualizedSolutionPath Component
+- Uses windowing for large solution paths (10,000+ steps)
+- Only renders visible path steps
+- Smooth scrolling with position indicators
+
+#### Efficient State Management
+- Debounced matrix input validation
+- Optimistic UI updates for better responsiveness
+- Smart polling intervals based on operation complexity
 
 ## Available Scripts
 
-In the project directory, you can run:
-
 ### `npm start`
-
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
-
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+Runs the frontend in development mode on [http://localhost:3000](http://localhost:3000)
 
 ### `npm test`
-
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Launches the test runner with coverage for all components
 
 ### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Builds the optimized production bundle
 
 ### `npm run eject`
+⚠️ **One-way operation** - Exposes webpack configuration
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+## Component Testing
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Components include comprehensive test coverage:
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+```bash
+# Run specific component tests
+npm test -- MatrixInput.test.tsx
+npm test -- History.test.tsx
+npm test -- integration/
+```
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+### Test Structure
+- **Unit Tests**: Individual component behavior
+- **Integration Tests**: Component interaction and API integration
+- **Accessibility Tests**: ARIA compliance and keyboard navigation
 
-## Learn More
+## Development Guidelines
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### State Management
+- Use React hooks for local component state
+- Lift state up for shared data (matrix, results)
+- Use context for global settings (API base URL)
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Error Handling
+- Display user-friendly error messages
+- Graceful degradation for network issues
+- Retry mechanisms for failed operations
+
+### Accessibility
+- ARIA labels for all interactive elements
+- Keyboard navigation support
+- Screen reader compatibility
+- High contrast color support
+
+## Deployment
+
+The frontend is designed to be deployed as a static site:
+
+```bash
+npm run build
+# Deploy the build/ folder to your hosting service
+```
+
+Compatible with:
+- Netlify
+- Vercel
+- GitHub Pages
+- AWS S3 + CloudFront
+- Azure Static Web Apps
+
+## Browser Support
+
+- Chrome 90+
+- Firefox 88+
+- Safari 14+
+- Edge 90+
+
+## Related Documentation
+
+- [Backend API Documentation](../README.md#api-endpoints)
+- [Environment Configuration](./ENVIRONMENT.md)
+- [Testing Guide](./src/components/__tests__/README.md)

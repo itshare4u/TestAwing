@@ -85,6 +85,9 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors("AllowLocalhost");
 
+// Health check endpoint
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+
 // Async Treasure Hunt API endpoints
 app.MapPost("/api/treasure-hunt/async", async (AsyncSolveRequest request, TreasureHuntSolverService solverService) =>
 {
@@ -228,8 +231,11 @@ app.MapPost("/api/treasure-hunt/cancel-solve/{id}", async (int id, TreasureHuntS
     }
 });
 
-// Configure to run on port 5001
-app.Urls.Add("http://localhost:5001");
+// Use environment variable for URLs or default to localhost:5001 for development
+if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
+{
+    app.Urls.Add("http://localhost:5001");
+}
 
 app.Run();
 
