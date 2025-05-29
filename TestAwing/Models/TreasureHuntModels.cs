@@ -26,7 +26,7 @@ public class TreasureHuntRequest
     public int P { get; set; }
     
     [Required]
-    public int[][] Matrix { get; set; } = Array.Empty<int[]>();
+    public int[][] Matrix { get; set; } = [];
 }
 
 public class TreasureHuntResult
@@ -58,7 +58,7 @@ public class TreasureHuntResponse
 {
     public double MinFuel { get; set; }
     public int Id { get; set; }
-    public List<PathStep> Path { get; set; } = new List<PathStep>();
+    public List<PathStep> Path { get; set; } = [];
 }
 
 public class TreasureHuntResultWithPath
@@ -67,8 +67,8 @@ public class TreasureHuntResultWithPath
     public int N { get; set; }
     public int M { get; set; }
     public int P { get; set; }
-    public int[][] Matrix { get; set; } = Array.Empty<int[]>();
-    public List<PathStep> Path { get; set; } = new List<PathStep>();
+    public int[][] Matrix { get; set; } = [];
+    public List<PathStep> Path { get; set; } = [];
     public double MinFuel { get; set; }
     public DateTime CreatedAt { get; set; }
 }
@@ -84,7 +84,7 @@ public class PaginationRequest
 
 public class PaginatedResponse<T>
 {
-    public List<T> Data { get; set; } = new List<T>();
+    public List<T> Data { get; set; } = [];
     public int Page { get; set; }
     public int PageSize { get; set; }
     public int TotalCount { get; set; }
