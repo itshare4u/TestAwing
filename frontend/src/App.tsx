@@ -6,12 +6,11 @@ import axios from 'axios';
 import ParameterInput from './components/ParameterInput';
 import MatrixInput from './components/MatrixInput';
 import History from './components/History';
-import SolutionPath from './components/SolutionPath';
+import VirtualizedSolutionPath from './components/VirtualizedSolutionPath';
 import ResultDisplay from './components/ResultDisplay';
 
 // Import types
 import {
-    TreasureHuntRequest,
     TreasureHuntResult,
     TreasureHuntResultWithPath,
     PaginatedResponse,
@@ -556,24 +555,24 @@ const App: React.FC = () => {
                             }
                         }}
                     />
+
+                    {/* Solution Path positioned below history */}
+                    {(result !== null || selectedHistoryItem) && (
+                        <VirtualizedSolutionPath 
+                            n={currentN}
+                            m={currentM}
+                            p={currentP}
+                            matrix={matrix}
+                            selectedHistoryMatrix={selectedHistoryItem?.matrix}
+                            currentPath={currentPath}
+                            selectedHistoryPath={selectedHistoryItem?.path}
+                            result={result}
+                            selectedHistoryItem={selectedHistoryItem}
+                            formatFuelAsMath={formatFuelAsMath}
+                        />
+                    )}
                 </Box>
             </Box>
-
-            {/* Solution Path */}
-            {(result !== null || selectedHistoryItem) && (
-                <SolutionPath 
-                    n={currentN}
-                    m={currentM}
-                    p={currentP}
-                    matrix={matrix}
-                    selectedHistoryMatrix={selectedHistoryItem?.matrix}
-                    currentPath={currentPath}
-                    selectedHistoryPath={selectedHistoryItem?.path}
-                    result={result}
-                    selectedHistoryItem={selectedHistoryItem}
-                    formatFuelAsMath={formatFuelAsMath}
-                />
-            )}
         </Container>
     );
 };
