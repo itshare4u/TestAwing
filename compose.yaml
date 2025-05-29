@@ -1,4 +1,24 @@
 ﻿services:
+  # SQL Server Database service
+  testawing-sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: testawing-sqlserver
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=TreasureHunt@2024
+      - MSSQL_PID=Developer
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P TreasureHunt@2024 -Q 'SELECT 1' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
   # Backend API service
   testawing-backend:
     image: testawing-backend
@@ -12,9 +32,14 @@
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
+      - DatabaseProvider=SqlServer
+      - ConnectionStrings__DefaultConnection=Server=testawing-sqlserver,1433;Database=TreasureHuntDb;User=sa;Password=TreasureHunt@2024;TrustServerCertificate=true;
     volumes:
       # Optional: Mount for development database persistence
       - testawing_data:/app/data
+    depends_on:
+      testawing-sqlserver:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
@@ -39,4 +64,5 @@
 
 volumes:
   testawing_data:
+  sqlserver_data:
 

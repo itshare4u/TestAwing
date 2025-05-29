@@ -1,0 +1,23 @@
+services:
+  # SQL Server Database service for testing
+  testawing-test-sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: testawing-test-sqlserver
+    ports:
+      - "1434:1433"  # Different port to avoid conflicts
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=TestPassword@2024
+      - MSSQL_PID=Developer
+    volumes:
+      - test_sqlserver_data:/var/opt/mssql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P TestPassword@2024 -Q 'SELECT 1' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  test_sqlserver_data:
